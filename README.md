@@ -21,4 +21,4 @@ The 'R' directory contains the functions used for performing the analyses and th
 
 ## Perform the analyses and make the figures
 
-`03_analyses.R`
+`03_analyses.R` produces the figures and additional analyses.
