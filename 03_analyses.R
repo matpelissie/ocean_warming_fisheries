@@ -260,9 +260,9 @@ traj_SProd_sum_area <- traj_SProd %>%
                                         "increase_accelerated","increase_abrupt"))) %>%
       dplyr::ungroup() %>%
       sunburst_traj_plot_det(.,
-                         title=NULL,
-                         size_caption=13,
-                         size=2, no_text=TRUE, no_caption=FALSE)
+                             title=NULL,
+                             size_caption=13,
+                             size=2, no_text=TRUE, no_caption=FALSE)
 
   }, x=., y=names(.), SIMPLIFY = FALSE)
 
@@ -294,9 +294,9 @@ traj_SProd_sum_area <- traj_SProd %>%
                                         "increase_quadratic","increase_abrupt"))) %>%
       dplyr::ungroup() %>%
       sunburst_traj_plot(.,
-                             title=NULL,
-                             size_caption=13,
-                             size=2, no_text=TRUE, no_caption=FALSE)
+                         title=NULL,
+                         size_caption=13,
+                         size=2, no_text=TRUE, no_caption=FALSE)
 
   }, x=., y=names(.), SIMPLIFY = FALSE)
 
@@ -331,6 +331,26 @@ dev.off()
 
 
 ### Statistical tests ----------------------------------------------------
+
+# Distribution in time
+set.seed(1)
+ks.test(ts_avail_distr2 %>%
+          dplyr::pull(year),
+        abr_events %>%
+          dplyr::filter(trend=="decrease") %>%
+          dplyr::pull(loc_brk_chg),
+        simulate.p.value = TRUE, B = 1e5)
+# p-value = 0.0382
+
+set.seed(1)
+ks.test(ts_avail_distr2 %>%
+          dplyr::pull(year),
+        abr_events %>%
+          dplyr::filter(trend=="increase") %>%
+          dplyr::pull(loc_brk_chg),
+        simulate.p.value = TRUE, B = 1e5)
+# p-value = 0.3179
+
 
 # By class
 class_mat_fao <- traj_SProd %>%
@@ -496,7 +516,7 @@ df_scl <- mod_df01_default %>%
                  sst_avg, sst_change, mean_ER_prshf, ER_change_prshf) %>%
   dplyr::mutate(dplyr::across(dplyr::where(is.numeric) &
                                 !dplyr::contains(c("shift", "X", "Y")),
-                       ~ c(scale(.)))) %>%
+                              ~ c(scale(.)))) %>%
   dplyr::mutate(Species = as.factor(Species),
                 family = as.factor(family),
                 ordername = as.factor(ordername))
@@ -566,6 +586,9 @@ m_inc
 dev.off()
 
 table(df_scl$shift_inc)
+
+# => Panels assembled with Inkscape to arrange the legends
+
 
 ## Fig 4  ------------------------------------------------------------------
 
@@ -813,8 +836,8 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
   (fig4f <- prop_warm_plot(coll, main_lme,
                            expression(did_collapse=="Yes"),
                            weight="", 1)+
-      labs(y="Proportion of collapses",
-           tag="F")+
+     labs(y="Proportion of collapses",
+          tag="F")+
      theme(axis.text = element_text(size=12),
            axis.title = element_text(size=15),
            axis.title.x = element_text(size=13),
@@ -832,6 +855,9 @@ fig4 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.25), csec_coll = 2)
 
 ggsave(filename="res/figs/fig4_bavg0.25_cseccoll2.pdf",
        width=14, height=8, plot=fig4)
+
+# => Improved rendering in Inkscape
+
 
 ### Statistical tests ----------------------------------------------------
 
