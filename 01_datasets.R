@@ -15,7 +15,7 @@ dir.create("data/raw_data/", showWarnings = FALSE)
 
 download.file(
   "https://zenodo.org/records/7814638/files/RAMLDB%20v4.61.zip?download=1",
-              destfile = "data/raw_data/RAMLDB v4.61.zip")
+  destfile = "data/raw_data/RAMLDB v4.61.zip")
 unzip("data/raw_data/RAMLDB v4.61.zip",
       exdir = "data/raw_data/RAMLDB v4.61")
 unlink("data/raw_data/RAMLDB v4.61.zip")
@@ -24,9 +24,29 @@ dir.create("data/RAMLDB v4.61")
 file.copy("data/raw_data/RAMLDB v4.61/R Data/", "data/RAMLDB v4.61", recursive=TRUE)
 
 
+# Download FAO fish catch data --------------------------------------------
+
+dir.create("data/FAO_data", showWarnings = FALSE)
+
+# Catch data
+download.file(
+  "https://www.fao.org/fishery/static/Data/Capture_2024.1.0.zip",
+  destfile = "data/raw_data/Capture_2024.1.0.zip")
+unzip("data/raw_data/Capture_2024.1.0.zip",
+      exdir = "data/FAO_data/Capture_2024.1.0")
+unlink("data/raw_data/Capture_2024.1.0.zip")
+
+# Taxonomy
+download.file(
+  "https://www.fao.org/fishery/static/ASFIS/ASFIS_sp.zip",
+  destfile = "data/raw_data/ASFIS_sp.zip")
+unzip("data/raw_data/ASFIS_sp.zip",
+      exdir = "data/FAO_data/ASFIS_sp")
+unlink("data/raw_data/ASFIS_sp.zip")
+
+
 
 # Spatial data --------------------------------------------------
-
 
 ## Area polygons ------------------------------------------------------------
 
@@ -223,9 +243,10 @@ frac_lme <- lapply(1:length(stocks), function(i){
 
   return(frac_simpl)
 
-  }) %>% dplyr::bind_rows()
+}) %>% dplyr::bind_rows()
 
 readr::write_csv(frac_lme, "data/spatial_data/frac_lme.csv")
+
 
 
 # SST data ----------------------------------------------------------------
@@ -354,7 +375,7 @@ lmes <- dplyr::bind_rows(oceans, lme)
 
 # Calculate mean monthly SST within stock boundaries (zonal stats)
 sst.monthly.lme <- terra::extract(sst_rast, lmes %>% terra::vect(),
-                              method="simple", fun=mean, na.rm=TRUE) %>%
+                                  method="simple", fun=mean, na.rm=TRUE) %>%
   dplyr::select(-ID)
 
 
