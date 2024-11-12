@@ -82,9 +82,9 @@ list_SProd_norm <-
 
 # Create directory to store classification output:
 dir.create("res/classif/", showWarnings=FALSE)
-dir <- paste0("res/classif/SProd_RAMLDBv4.61_minlen",
-              len,"_start",start_year,"/")
-dir.create(dir, showWarnings=FALSE)
+dir1 <- paste0("res/classif/SProd_RAMLDBv4.61_minlen",
+               len,"_start",start_year,"/")
+dir.create(dir1, showWarnings=FALSE)
 
 # Run the classification:
 classif_SProd <-
@@ -93,10 +93,38 @@ classif_SProd <-
     group="stockid", time="year", variable=c("SProd"),
     str="aic_asd", run_loo=run_loo, two_bkps=TRUE,
     makeplots=TRUE, ind_plot=NULL,
-    dirname=dir, save_plot=TRUE)
+    dirname=dir1, save_plot=TRUE)
 
 path1 <- paste0("classif_v4.61_SProd_minlen", len ,
                 "_normTBavg_loo", run_loo,"_aicasd_start", start_year)
 
 saveRDS(classif_SProd,
         file=paste0("res/classif/", path1, ".rds"))
+
+
+# Classify surplus production time series based on AICc only ------------------
+list_SProd_norm <-
+  readr::read_rds(paste0("data/ts_data/SProd_RAMLDBv4.61_minlen",
+                         len,"_start",start_year,".rds"))
+
+# Create directory to store classification output:
+dir.create("res/classif/", showWarnings=FALSE)
+dir2 <- paste0("res/classif/SProd_RAMLDBv4.61_minlen",
+               len,"_start",start_year,"_AICconly/")
+dir.create(dir2, showWarnings=FALSE)
+
+# Run the classification:
+classif_SProd <-
+  run_classif_data(
+    df_list=list_SProd_norm, min_len=len,
+    group="stockid", time="year", variable=c("SProd"),
+    str="aic", run_loo=FALSE, two_bkps=TRUE,
+    makeplots=TRUE, ind_plot=NULL,
+    dirname=dir2, save_plot=TRUE)
+
+path2 <- paste0("classif_v4.61_SProd_minlen", len ,
+                "_normTBavg_loo", run_loo,"_aicasd_start", start_year,"_AICconly")
+
+saveRDS(classif_SProd,
+        file=paste0("res/classif/", path2, ".rds"))
+
