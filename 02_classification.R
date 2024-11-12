@@ -118,7 +118,7 @@ classif_SProd <-
   run_classif_data(
     df_list=list_SProd_norm, min_len=len,
     group="stockid", time="year", variable=c("SProd"),
-    str="aic", run_loo=FALSE, two_bkps=TRUE,
+    str="aic", run_loo=run_loo, two_bkps=TRUE,
     makeplots=TRUE, ind_plot=NULL,
     dirname=dir2, save_plot=TRUE)
 
