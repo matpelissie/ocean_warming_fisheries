@@ -86,31 +86,69 @@ unlink("data/raw_data/LME66.zip")
 # unlink("data/raw_data/GOaS_v1_20211214/")
 
 
-### Assign stocks to LME ----------------------------------------------------
+### Combine LME and ocean polygons -------------------------------------------
 
 sf::sf_use_s2(FALSE) # To remove error for intersection
 
 lme <- sf::read_sf(dsn = "data/spatial_data/LME66/", layer = "lmes66gcd")
 oceans <- sf::read_sf(dsn = "data/spatial_data/ocean_simpl/",
                       layer = "ocean_simpl") %>%
-  dplyr::filter(grepl("Ocean", name))
+  dplyr::filter(grepl("Ocean", name)) %>%
+  dplyr::rename(LME_NAME = name) %>%
+  dplyr::mutate(LME_NUMBER = 67:73)
 
 # Group all LMEs
 lme_merge <- lme %>% dplyr::summarise()
 
 # Substract LMEs from oceans
 high_seas <- sf::st_difference(oceans, lme_merge)
-high_seas <- high_seas %>%
-  dplyr::rename(LME_NAME = name) %>%
-  dplyr::mutate(LME_NUMBER = 67:74)
 
 # Combine LMEs and high sea regions
-lme_all <- dplyr::bind_rows(lme, high_seas) %>%
+lmes <- dplyr::bind_rows(lme, high_seas)
+
+lme_all <- lmes %>%
   dplyr::mutate(area_lme = sf::st_area(.)) %>%
   sf::st_make_valid()
 
 # sf::write_sf(lme_all, dsn = "data/spatial_data/LME_highseas.shp")
 
+
+### Compute LMEs centroids (and adjust some) ---------------------------
+
+# Compute centroids:
+lme_cntrd <- lmes %>%
+  dplyr::select(LME_NAME, geometry) %>%
+  # transform to a projection with projected coordinates (World Mercator):
+  sf::st_transform(3395) %>%
+  sf::st_centroid() %>%
+  # transform back to WGS 84 (with geographic coordinates):
+  sf::st_transform(4326) %>%
+  dplyr::mutate(lon = sf::st_coordinates(.)[,1],
+                lat = sf::st_coordinates(.)[,2]) %>%
+  tibble::as_tibble() %>%
+  suppressWarnings()
+
+# Correct centroids of polygons on either side of the longitude 180/-180:
+{lme_cntrd[lme_cntrd$LME_NAME=="South Pacific Ocean","lon"] <- -135
+  lme_cntrd[lme_cntrd$LME_NAME=="South Pacific Ocean","lat"] <- -30
+  lme_cntrd[lme_cntrd$LME_NAME=="North Pacific Ocean","lon"] <- -148
+  lme_cntrd[lme_cntrd$LME_NAME=="North Pacific Ocean","lat"] <- 34
+  lme_cntrd[lme_cntrd$LME_NAME=="Aleutian Islands","lon"] <- -174
+  lme_cntrd[lme_cntrd$LME_NAME=="Aleutian Islands","lat"] <- 51
+  lme_cntrd[lme_cntrd$LME_NAME=="East Bering Sea","lon"] <- -173
+  lme_cntrd[lme_cntrd$LME_NAME=="East Bering Sea","lat"] <- 57
+  lme_cntrd[lme_cntrd$LME_NAME=="Northern Bering - Chukchi Seas","lon"] <- -169
+  lme_cntrd[lme_cntrd$LME_NAME=="Northern Bering - Chukchi Seas","lat"] <- 73
+  # The Arctic Ocean is essentially occupied by other LMEs
+  lme_cntrd[lme_cntrd$LME_NAME=="Arctic Ocean","lon"] <- -55
+  lme_cntrd[lme_cntrd$LME_NAME=="Arctic Ocean","lat"] <- 60
+  lme_cntrd[lme_cntrd$LME_NAME=="Central Arctic","lat"] <- 85
+  }
+
+# Save csv:
+lme_cntrd %>%
+  dplyr::select(LME_NAME, lon, lat) %>%
+  readr::write_csv("data/spatial_data/lme_ocean_centroids.csv")
 
 
 ## Stock polygons ----------------------------------------------------------
@@ -246,7 +284,42 @@ frac_lme <- lapply(1:length(stocks), function(i){
 }) %>% dplyr::bind_rows()
 
 readr::write_csv(frac_lme, "data/spatial_data/frac_lme.csv")
+frac_lme <- readr::read_csv("data/spatial_data/frac_lme.csv")
 
+main_lme <- frac_lme %>%
+  # Affect stocks to LME (not ocean) except if polygon entirely outside LME
+  # with high sea stocks specified below
+  dplyr::filter(!grepl("Ocean", LME_NAME) | prop_area==1) %>%
+  dplyr::group_by(stockid) %>%
+  dplyr::slice_max(prop_area)
+
+# Specify high-sea "LME" manually
+{
+  main_lme[main_lme$stockid=="ALBANATL","LME_NAME"] <- "North Atlantic Ocean"
+  main_lme[main_lme$stockid=="BIGEYECWPAC","LME_NAME"] <- "North Pacific Ocean"
+  main_lme[main_lme$stockid=="BLKMARLINIO","LME_NAME"] <- "Indian Ocean"
+  main_lme[main_lme$stockid=="BLSHARIO","LME_NAME"] <- "Indian Ocean"
+  main_lme[main_lme$stockid=="BMARLINATL","LME_NAME"] <- "South Atlantic Ocean"
+  main_lme[main_lme$stockid=="BMARLINIO","LME_NAME"] <- "Indian Ocean"
+  main_lme[main_lme$stockid=="PACBTUNA","LME_NAME"] <- "South Pacific Ocean"
+  main_lme[main_lme$stockid=="SAILEATL","LME_NAME"] <- "South Atlantic Ocean"
+  main_lme[main_lme$stockid=="SAILWATL","LME_NAME"] <- "South Atlantic Ocean"
+  main_lme[main_lme$stockid=="SBT","LME_NAME"] <- "Indian Ocean"
+  main_lme[main_lme$stockid=="SKJCIO","LME_NAME"] <- "Indian Ocean"
+  main_lme[main_lme$stockid=="SKJCWPAC","LME_NAME"] <- "North Pacific Ocean"
+  main_lme[main_lme$stockid=="SKJEATL","LME_NAME"] <- "South Atlantic Ocean"
+  main_lme[main_lme$stockid=="SKJWATL","LME_NAME"] <- "North Atlantic Ocean"
+  main_lme[main_lme$stockid=="STMARLINIO","LME_NAME"] <- "Indian Ocean"
+  main_lme[main_lme$stockid=="STMARLINNEPAC","LME_NAME"] <- "North Pacific Ocean"
+  main_lme[main_lme$stockid=="STMARLINSWPO","LME_NAME"] <- "South Pacific Ocean"
+  main_lme[main_lme$stockid=="STMARLINWCNPAC","LME_NAME"] <- "North Pacific Ocean"
+  main_lme[main_lme$stockid=="SWORDEPAC","LME_NAME"] <- "South Pacific Ocean"
+  main_lme[main_lme$stockid=="SWORDNATL","LME_NAME"] <- "North Atlantic Ocean"
+  main_lme[main_lme$stockid=="SWORDNPAC","LME_NAME"] <- "North Pacific Ocean"
+  main_lme[main_lme$stockid=="WMARLINATL","LME_NAME"] <- "South Atlantic Ocean"
+  main_lme[main_lme$stockid=="YFINCWPAC","LME_NAME"] <- "North Pacific Ocean"
+  }
+readr::write_csv(main_lme, "data/spatial_data/main_lme.csv")
 
 
 # SST data ----------------------------------------------------------------
