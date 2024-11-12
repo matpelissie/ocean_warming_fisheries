@@ -71,7 +71,7 @@ list_SProd_norm <- df_SProd_norm %>%
   stats::setNames(stock_names)
 
 # Save SProd timeseries
-dir.create("data/ts_data/")
+dir.create("data/ts_data/", showWarnings=FALSE)
 readr::write_rds(list_SProd_norm, paste0("data/ts_data/SProd_RAMLDBv4.61_minlen",
                                          len,"_start",start_year,".rds"))
 
