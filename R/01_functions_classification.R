@@ -7,77 +7,10 @@
 ###-###-###-###-###-###-###-###-###-###-###-###-###-###-###-###-###-###
 
 
-## Changes compared to previous version:
-# abrnss_thr argument added to best_traj_aic and traj_class
-
-## To do:
-# Add slope change shape option in fitmodels (slopechange_classif)
+# Trajectory classification -----------------------------------------------
 
 
-
-# I) Data preparation --------------------------------------------------------
-
-
-## I-B) Empirical data -----------------------------------------------------
-
-
-
-#' Extract stocks RAMLBD timeseries
-#' (the RAMLBD should be loaded in the environment)
-#'
-#' @param id Short stock ID character.
-#' @param ts_type Type of timeseries (TBbest, ERbest...) character.
-#' @param drop_na Keep only years with all types of timeseries available.
-#'
-#' @return Data frame of the selected timeseries.
-#'
-#' @export
-
-extract_RAM <- function(id, ts_type, drop_na=TRUE){
-
-  ts <- timeseries_values_views %>%
-    dplyr::filter(stockid %in% id) %>%
-    dplyr::mutate(scen = paste(ts_type, stockid, sep="_")) %>%
-    dplyr::select(scen, year, dplyr::all_of(ts_type)) %>%
-    dplyr::relocate(scen)
-
-  if (drop_na){
-    ts <- ts %>% na.omit()
-  }
-
-  return(ts)
-
-}
-
-
-## I-C) Data standardization -----------------------------------------------
-
-#' Process any timeseries data prior classification
-#'
-#' @param df Data frame with timeseries to classify.
-#'
-#' @return List of data frames ready for analyses and data attributes.
-#'
-#' @export
-
-prep_data_any <- function(df){
-
-  # For any empirical data (with 2 columns)
-  time_time <- names(df)[1]
-  ts_type <- names(df)[2]
-  X <- df[,1, drop=TRUE]
-  Y <- df[,2, drop=TRUE]
-
-  # Format of the csv:
-  # 2 columns:
-  # 1st column with time (e.g. year)
-  # 2nd column with the values of the variable (e.g. biomass)
-
-  sets <- list("ts" = data.frame(X=X, Y=Y))
-
-  return(list("ts"=sets, "ts_type"=ts_type, "time_type"=time_time))
-}
-
+## Data preparation --------------------------------------------------------
 
 #' Process timeseries data prior classification
 #'
@@ -128,10 +61,7 @@ prep_data_simpl <- function(df){
 
 
 
-
-# III) Trajectory classification -----------------------------------------------
-
-## III-A) Gradual trajectory models ------------------------------------------------
+## Gradual trajectory models ------------------------------------------------
 
 #' Trajectory classification (adapted from Rigal et al. 2020)
 #'
@@ -408,11 +338,7 @@ class_trajectory_mod <- function (Y = NULL, X = NULL, dataset = NULL,
 #'
 #' @export
 
-mc_trend <- function(dataset,
-                     niter,
-                     ref_year=NULL,
-                     correction=FALSE,
-                     fit=NULL){
+mc_trend <- function(dataset, niter, ref_year=NULL, correction=FALSE, fit=NULL){
 
   # Initiate output data frame:
   b <- data.frame(t(rep(NA, 15)))
@@ -562,11 +488,7 @@ mc_trend <- function(dataset,
 #'
 #' @export
 
-res_trend <- function(sets,
-                      niter,
-                      ref_year=NULL,
-                      correction=FALSE,
-                      fit=NULL){
+res_trend <- function(sets, niter, ref_year=NULL, correction=FALSE, fit=NULL){
 
   res <- data.frame()
 
@@ -669,7 +591,7 @@ res_trend <- function(sets,
 
 
 
-## III-B) Abrupt models ----------------------------------------------------
+## Abrupt models ----------------------------------------------------
 
 #' Breakpoints analysis using 'asdetect' package
 #'
@@ -1310,7 +1232,7 @@ environment(custom_shift_type) <- asNamespace('asdetect')
 
 
 
-## III-C) Classification ---------------------------------------------------
+## Classification ---------------------------------------------------
 
 #' Make trajectory fitting
 #'
@@ -1380,6 +1302,263 @@ fit_models <- function(sets, abr_mtd, ...){
                              "res_abr"=res_abr)
   )
   )
+}
+
+
+
+#' Determine best trajectory based on AIC comparisons
+#'
+#' @param res Data frame with results from the different classifications.
+#' @param str Character specifying how the best trajectory is chosen,
+#' based on lowest AICc only ("aic") or also the confirmation
+#' with asdetect ("aic_asd").
+#' @param smooth_signif Logical, should significance of the coefficient be taken
+#'  into account in the selection of best model.
+#' @param edge_lim Numeric, minimal breakpoint distance to start or end dates.
+#' @param congr_brk Numeric, maximal acceptable distance between chngpt and
+#' as_detect breaks.
+#' @param abrnss_thr Numeric, minimal threshold of (absolute) abruptness to
+#' consider a time series as abrupt (default 0).
+#'
+#' @return Data frame with the output of the best fitting model,
+#' trajectory, and class.
+#'
+#' @export
+
+best_traj_aic <- function(res, str,
+                          smooth_signif, edge_lim, congr_brk, abrnss_thr=0){
+
+  traj_lvl <- c("stable_constant","increase_constant","decrease_constant",
+                "stable_concave","stable_convex","decrease_accelerated",
+                "decrease_decelerated","increase_accelerated",
+                "increase_decelerated","1_breakpoint")
+
+  class_lvl <- c("no_change","linear","quadratic","abrupt")
+
+  best_traj <- res$summ_res %>%
+
+    # Find minimal AIC and subtract to all AICc:
+    tibble::rownames_to_column(var="simu_id") %>%
+    dplyr::rowwise() %>%
+
+    dplyr::mutate(min_aic = min(dplyr::c_across(dplyr::contains("aic")),
+                                na.rm=TRUE),
+                  dplyr::across(dplyr::contains("aic") & !"min_aic",
+                                ~ .x - min_aic),
+                  dplyr::across(.names = "weight_{.col}",
+                                .cols = dplyr::contains("aic") & !"min_aic",
+                                .fns = ~ exp(-0.5*.x)),
+                  dplyr::across(.cols = dplyr::contains("weight_aic"),
+                                .fns = ~ round(.x / sum(dplyr::c_across(
+                                  dplyr::contains("weight_aic")), na.rm=TRUE),
+                                  digits=2))) %>%
+    dplyr::ungroup()
+
+  # (if as_detect involved) Divide multiple asd breakpoints into several columns
+  # and compute distance between chg and asd breakpoints:
+  if (str=="aic_asd"){
+
+    best_traj <- best_traj %>%
+      dplyr::mutate(loc_brk_asd_sep = strsplit(loc_brk_asd, ";")) %>%
+      tidyr::unnest(loc_brk_asd_sep) %>%
+      dplyr::mutate(loc_brk_asd_sep = as.numeric(loc_brk_asd_sep),
+                    loc_brk_chg = as.numeric(loc_brk_chg)) %>%
+      dplyr::group_by(simu_id) %>%
+      dplyr::mutate(row = row_number()) %>%
+      tidyr::pivot_wider(names_from=row, names_prefix="loc_brk_asd_",
+                         values_from=loc_brk_asd_sep) %>%
+      dplyr::mutate(dplyr::across(.cols = dplyr::contains('loc_brk_asd_'),
+                                  .names = "dup_{.col}")) %>%
+      dplyr::rename_with(~sub('dup_loc_brk_asd_',"diff_loc_",.),
+                         dplyr::contains('dup_loc_brk_asd_')) %>%
+      dplyr::mutate(dplyr::across(.cols = dplyr::contains("diff_loc_"),
+                                  ~abs(loc_brk_chg-.x))) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(loc_brk_asd = as.numeric(loc_brk_asd),
+                    diff_loc_min = min(dplyr::c_across(
+                      dplyr::contains("diff_loc_")), na.rm=TRUE),
+                    loc_brk_asd_min = min(dplyr::c_across(
+                      dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
+                    loc_brk_asd_max = max(dplyr::c_across(
+                      dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
+                    dplyr::across(.cols = dplyr::contains("loc"),
+                                  ~ dplyr::na_if(., Inf)),
+                    loc_brk_asd = as.character(loc_brk_asd)) %>%
+      suppressWarnings()
+  }
+
+  # Expand in length to select by AICc below:
+  best_traj <- best_traj %>%
+    dplyr::ungroup() %>%
+    tidyr::pivot_longer(contains("aic") & !contains("weight_aic"),
+                        names_to = "best_aic", values_to = "vals")
+
+
+  # Keep model with lowest AICc:
+  if (str=="aic"){
+
+    # Arrange models according to their AICc:
+    rank_aic <- best_traj %>%
+      dplyr::group_by(simu_id) %>%
+      dplyr::filter(!best_aic %in% c("aic_asd", "min_aic")) %>%
+      dplyr::mutate(aic_rank = dplyr::dense_rank(vals)) %>%
+      dplyr::select(contains("aic") & !contains("weight_aic") | "simu_id") %>%
+      tidyr::pivot_wider(names_from = aic_rank, names_prefix = "aic_rank",
+                         values_from = best_aic)
+
+    # Keep best model:
+    best_traj <- best_traj %>%
+      dplyr::filter(vals == 0) %>%
+      dplyr::select(-vals) %>%
+      dplyr::left_join(rank_aic, by="simu_id")
+
+    # If best AICc model is abrupt but do not fill in the edge limit criterion
+    # take 2nd best model in the ranking:
+    best_traj <- best_traj %>%
+      dplyr::mutate(best_aic = ifelse(best_aic=="aic_chg" &
+                                        (loc_brk_chg-first<edge_lim |
+                                           last-loc_brk_chg<edge_lim),
+                                      aic_rank2, best_aic)) %>%
+      dplyr::mutate(best_aic = sub("aic_","max_shape_", best_aic))
+
+  }
+
+
+  # Keep lowest AICc but confirm with asdetect if abrupt:
+  if (str=="aic_asd"){
+
+    # Arrange models according to their AICc:
+    rank_aic <- best_traj %>%
+      dplyr::group_by(simu_id) %>%
+      dplyr::filter(!best_aic %in% c("aic_asd", "min_aic")) %>%
+      dplyr::mutate(aic_rank = dplyr::dense_rank(vals)) %>%
+      dplyr::select(contains("aic") & !contains("weight_aic") | "simu_id") %>%
+      tidyr::pivot_wider(names_from = aic_rank, names_prefix = "aic_rank",
+                         values_from = best_aic)
+
+    # Keep the model with the lowest AIC:
+    best_traj <- best_traj %>%
+      dplyr::filter(vals == 0) %>%
+      dplyr::select(-vals)
+
+    # If best AICc model is abrupt but do not fill in the following criteria
+    # take 2nd best model in the ranking:
+    best_traj <- best_traj %>%
+      dplyr::left_join(rank_aic, by="simu_id") %>%
+
+      dplyr::mutate(
+        not_abr = "not_lowest_aic",
+
+        # If asdetect doesn't find any breakpoints:
+        not_abr = ifelse(best_aic=="aic_chg" &
+                           max_shape_asd=="0_breakpoint",
+                         "no_asd_brk", not_abr),
+
+        best_aic = ifelse(best_aic=="aic_chg" &
+                            max_shape_asd=="0_breakpoint",
+                          aic_rank2, best_aic),
+
+        # If the breakpoints found are not congruent:
+        not_abr = ifelse(best_aic=="aic_chg" & diff_loc_min > congr_brk,
+                         "no_congr_brk", not_abr),
+
+        best_aic = ifelse(best_aic=="aic_chg" & diff_loc_min > congr_brk,
+                          aic_rank2, best_aic),
+
+        # If the breakpoints are too close to the edges (for chg breakpoint):
+        not_abr = ifelse(best_aic=="aic_chg" &
+                           (loc_brk_chg-first<edge_lim |
+                              last-loc_brk_chg<edge_lim),
+                         "edge_lim", not_abr),
+
+        best_aic = ifelse(best_aic=="aic_chg" &
+                            (loc_brk_chg-first<edge_lim |
+                               last-loc_brk_chg<edge_lim),
+                          aic_rank2, best_aic),
+
+        # If abruptness is below threshold:
+        not_abr = ifelse(best_aic=="aic_chg" &
+                           abs(abruptness)<abrnss_thr,
+                         "abrnss_thr", not_abr),
+
+        best_aic = ifelse(best_aic=="aic_chg" &
+                            abs(abruptness)<abrnss_thr,
+                          aic_rank2, best_aic),
+
+
+        not_abr = ifelse(best_aic=="aic_chg", NA, not_abr)
+      ) %>%
+
+      dplyr::mutate(best_aic = sub("aic_","max_shape_", best_aic))
+
+  }
+
+
+  # Display best model and trajectory for each simulation:
+  best_traj <- best_traj %>%
+
+    dplyr::select(simu_id|contains("max_shape")|contains("expected")|
+                    best_aic|signif_model|contains("loc")|contains("weight")|
+                    mag|rel_chg|contains("SD")|contains("nrmse")|slope|
+                    first|last|abruptness|contains("not_abr")) %>%
+
+    tidyr::pivot_longer(contains("max_shape"),
+                        names_to = "best_model",
+                        values_to = "traj") %>%
+
+    # Keep the trends for each fit (and then only keep the best):
+    dplyr::left_join(best_traj %>%
+                       dplyr::select(simu_id | contains("trend")) %>%
+                       {if(str == "aic_asd")
+                         dplyr::select(., -"trend_asd") else .} %>%
+                       tidyr::pivot_longer(contains("trend"),
+                                           names_to = "trend_model",
+                                           values_to = "trend") %>%
+                       dplyr::rename(best_model = trend_model) %>%
+                       dplyr::mutate(best_model = sub("trend_", "max_shape_",
+                                                      best_model)),
+                     by = c("simu_id", "best_model"))
+
+
+  # Check significance of coefficients for smooth (non-abrupt) trajectories:
+  if(smooth_signif){
+
+    best_traj <- best_traj %>%
+      dplyr::mutate(signif_model = paste0("max_shape_", signif_model),
+                    best_aic = ifelse(best_aic != "max_shape_chg" &
+                                        signif_model != best_aic,
+                                      signif_model, best_aic))
+  }
+
+  # Final reshaping of the results:
+  best_traj <- best_traj %>%
+    dplyr::filter(best_aic==best_model) %>%
+    {if(str == "aic_asd") dplyr::select(., -best_aic & -weight_aic_asd)
+      else dplyr::select(., -best_aic)} %>%
+    dplyr::mutate(simu_id = factor(simu_id),
+                  traj = traj %>% factor(levels = traj_lvl),
+                  class = dplyr::case_when(
+                    stringr::str_detect(traj,"stable_constant") ~ "no_change",
+                    # acts as smooth significant for 1st order
+                    stringr::str_detect(traj, "constant") ~ "linear",
+                    stringr::str_detect(traj, "breakpoint") ~ "abrupt",
+                    stringr::str_detect(traj, "acc|dec|conc|conv") ~ "quadratic"
+                  ) %>% factor(levels = class_lvl),
+                  trend = trend %>% factor(levels = c("stable", "decrease",
+                                                      "increase"))) %>%
+    dplyr::rename(weight_aic_no_change = weight_aic_nch,
+                  weight_aic_linear = weight_aic_lin,
+                  weight_aic_quadratic = weight_aic_pol,
+                  weight_aic_abrupt = weight_aic_chg,
+                  nrmse_no_change = nrmse_nch,
+                  nrmse_linear = nrmse_lin,
+                  nrmse_quadratic = nrmse_pol,
+                  nrmse_abrupt = nrmse_chg) %>%
+    dplyr::relocate(where(is.factor)) %>%
+    dplyr::relocate(c(simu_id, best_model))
+
+  return(best_traj)
+
 }
 
 
@@ -1766,297 +1945,40 @@ traj_class <- function(sets, run_loo, two_bkps, ...){
 
 
 
-#' Determine best trajectory based on AIC comparisons
-#'
-#' @param res Data frame with results from the different classifications.
-#' @param str Character specifying how the best trajectory is chosen,
-#' based on lowest AICc only ("aic") or also the confirmation
-#' with asdetect ("aic_asd").
-#' @param smooth_signif Logical, should significance of the coefficient be taken
-#'  into account in the selection of best model.
-#' @param edge_lim Numeric, minimal breakpoint distance to start or end dates.
-#' @param congr_brk Numeric, maximal acceptable distance between chngpt and
-#' as_detect breaks.
-#' @param abrnss_thr Numeric, minimal threshold of (absolute) abruptness to
-#' consider a time series as abrupt (default 0).
-#'
-#' @return Data frame with the output of the best fitting model,
-#' trajectory, and class.
-#'
-#' @export
-
-best_traj_aic <- function(res, str,
-                          smooth_signif, edge_lim, congr_brk, abrnss_thr=0){
-
-  traj_lvl <- c("stable_constant","increase_constant","decrease_constant",
-                "stable_concave","stable_convex","decrease_accelerated",
-                "decrease_decelerated","increase_accelerated",
-                "increase_decelerated","1_breakpoint")
-
-  class_lvl <- c("no_change","linear","quadratic","abrupt")
-
-  best_traj <- res$summ_res %>%
-
-    # Find minimal AIC and subtract to all AICc:
-    tibble::rownames_to_column(var="simu_id") %>%
-    dplyr::rowwise() %>%
-
-    dplyr::mutate(min_aic = min(dplyr::c_across(dplyr::contains("aic")),
-                                na.rm=TRUE),
-                  dplyr::across(dplyr::contains("aic") & !"min_aic",
-                                ~ .x - min_aic),
-                  dplyr::across(.names = "weight_{.col}",
-                                .cols = dplyr::contains("aic") & !"min_aic",
-                                .fns = ~ exp(-0.5*.x)),
-                  dplyr::across(.cols = dplyr::contains("weight_aic"),
-                                .fns = ~ round(.x / sum(dplyr::c_across(
-                                  dplyr::contains("weight_aic")), na.rm=TRUE),
-                                  digits=2))) %>%
-    dplyr::ungroup()
-
-  # (if as_detect involved) Divide multiple asd breakpoints into several columns
-  # and compute distance between chg and asd breakpoints:
-  if (str=="aic_asd"){
-
-    best_traj <- best_traj %>%
-      dplyr::mutate(loc_brk_asd_sep = strsplit(loc_brk_asd, ";")) %>%
-      tidyr::unnest(loc_brk_asd_sep) %>%
-      dplyr::mutate(loc_brk_asd_sep = as.numeric(loc_brk_asd_sep),
-                    loc_brk_chg = as.numeric(loc_brk_chg)) %>%
-      dplyr::group_by(simu_id) %>%
-      dplyr::mutate(row = row_number()) %>%
-      tidyr::pivot_wider(names_from=row, names_prefix="loc_brk_asd_",
-                         values_from=loc_brk_asd_sep) %>%
-      dplyr::mutate(dplyr::across(.cols = dplyr::contains('loc_brk_asd_'),
-                                  .names = "dup_{.col}")) %>%
-      dplyr::rename_with(~sub('dup_loc_brk_asd_',"diff_loc_",.),
-                         dplyr::contains('dup_loc_brk_asd_')) %>%
-      dplyr::mutate(dplyr::across(.cols = dplyr::contains("diff_loc_"),
-                                  ~abs(loc_brk_chg-.x))) %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(loc_brk_asd = as.numeric(loc_brk_asd),
-                    diff_loc_min = min(dplyr::c_across(
-                      dplyr::contains("diff_loc_")), na.rm=TRUE),
-                    loc_brk_asd_min = min(dplyr::c_across(
-                      dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
-                    loc_brk_asd_max = max(dplyr::c_across(
-                      dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
-                    dplyr::across(.cols = dplyr::contains("loc"),
-                                  ~ dplyr::na_if(., Inf)),
-                    loc_brk_asd = as.character(loc_brk_asd)) %>%
-      suppressWarnings()
-  }
-
-  # Expand in length to select by AICc below:
-  best_traj <- best_traj %>%
-    dplyr::ungroup() %>%
-    tidyr::pivot_longer(contains("aic") & !contains("weight_aic"),
-                        names_to = "best_aic", values_to = "vals")
-
-
-  # Keep model with lowest AICc:
-  if (str=="aic"){
-
-    # Arrange models according to their AICc:
-    rank_aic <- best_traj %>%
-      dplyr::group_by(simu_id) %>%
-      dplyr::filter(!best_aic %in% c("aic_asd", "min_aic")) %>%
-      dplyr::mutate(aic_rank = dplyr::dense_rank(vals)) %>%
-      dplyr::select(contains("aic") & !contains("weight_aic") | "simu_id") %>%
-      tidyr::pivot_wider(names_from = aic_rank, names_prefix = "aic_rank",
-                         values_from = best_aic)
-
-    # Keep best model:
-    best_traj <- best_traj %>%
-      dplyr::filter(vals == 0) %>%
-      dplyr::select(-vals) %>%
-      dplyr::left_join(rank_aic, by="simu_id")
-
-    # If best AICc model is abrupt but do not fill in the edge limit criterion
-    # take 2nd best model in the ranking:
-    best_traj <- best_traj %>%
-      dplyr::mutate(best_aic = ifelse(best_aic=="aic_chg" &
-                                        (loc_brk_chg-first<edge_lim |
-                                           last-loc_brk_chg<edge_lim),
-                                      aic_rank2, best_aic)) %>%
-      dplyr::mutate(best_aic = sub("aic_","max_shape_", best_aic))
-
-  }
-
-
-  # Keep lowest AICc but confirm with asdetect if abrupt:
-  if (str=="aic_asd"){
-
-    # Arrange models according to their AICc:
-    rank_aic <- best_traj %>%
-      dplyr::group_by(simu_id) %>%
-      dplyr::filter(!best_aic %in% c("aic_asd", "min_aic")) %>%
-      dplyr::mutate(aic_rank = dplyr::dense_rank(vals)) %>%
-      dplyr::select(contains("aic") & !contains("weight_aic") | "simu_id") %>%
-      tidyr::pivot_wider(names_from = aic_rank, names_prefix = "aic_rank",
-                         values_from = best_aic)
-
-    # Keep the model with the lowest AIC:
-    best_traj <- best_traj %>%
-      dplyr::filter(vals == 0) %>%
-      dplyr::select(-vals)
-
-    # If best AICc model is abrupt but do not fill in the following criteria
-    # take 2nd best model in the ranking:
-    best_traj <- best_traj %>%
-      dplyr::left_join(rank_aic, by="simu_id") %>%
-
-      dplyr::mutate(
-        not_abr = "not_lowest_aic",
-
-        # If asdetect doesn't find any breakpoints:
-        not_abr = ifelse(best_aic=="aic_chg" &
-                           max_shape_asd=="0_breakpoint",
-                         "no_asd_brk", not_abr),
-
-        best_aic = ifelse(best_aic=="aic_chg" &
-                            max_shape_asd=="0_breakpoint",
-                          aic_rank2, best_aic),
-
-        # If the breakpoints found are not congruent:
-        not_abr = ifelse(best_aic=="aic_chg" & diff_loc_min > congr_brk,
-                         "no_congr_brk", not_abr),
-
-        best_aic = ifelse(best_aic=="aic_chg" & diff_loc_min > congr_brk,
-                          aic_rank2, best_aic),
-
-        # If the breakpoints are too close to the edges (for chg breakpoint):
-        not_abr = ifelse(best_aic=="aic_chg" &
-                           (loc_brk_chg-first<edge_lim |
-                              last-loc_brk_chg<edge_lim),
-                         "edge_lim", not_abr),
-
-        best_aic = ifelse(best_aic=="aic_chg" &
-                            (loc_brk_chg-first<edge_lim |
-                               last-loc_brk_chg<edge_lim),
-                          aic_rank2, best_aic),
-
-        # If abruptness is below threshold:
-        not_abr = ifelse(best_aic=="aic_chg" &
-                           abs(abruptness)<abrnss_thr,
-                         "abrnss_thr", not_abr),
-
-        best_aic = ifelse(best_aic=="aic_chg" &
-                            abs(abruptness)<abrnss_thr,
-                          aic_rank2, best_aic),
-
-
-        not_abr = ifelse(best_aic=="aic_chg", NA, not_abr)
-      ) %>%
-
-      dplyr::mutate(best_aic = sub("aic_","max_shape_", best_aic))
-
-  }
-
-
-  # Display best model and trajectory for each simulation:
-  best_traj <- best_traj %>%
-
-    dplyr::select(simu_id|contains("max_shape")|contains("expected")|
-                    best_aic|signif_model|contains("loc")|contains("weight")|
-                    mag|rel_chg|contains("SD")|contains("nrmse")|slope|
-                    first|last|abruptness|contains("not_abr")) %>%
-
-    tidyr::pivot_longer(contains("max_shape"),
-                        names_to = "best_model",
-                        values_to = "traj") %>%
-
-    # Keep the trends for each fit (and then only keep the best):
-    dplyr::left_join(best_traj %>%
-                       dplyr::select(simu_id | contains("trend")) %>%
-                       {if(str == "aic_asd")
-                         dplyr::select(., -"trend_asd") else .} %>%
-                       tidyr::pivot_longer(contains("trend"),
-                                           names_to = "trend_model",
-                                           values_to = "trend") %>%
-                       dplyr::rename(best_model = trend_model) %>%
-                       dplyr::mutate(best_model = sub("trend_", "max_shape_",
-                                                      best_model)),
-                     by = c("simu_id", "best_model"))
-
-
-  # Check significance of coefficients for smooth (non-abrupt) trajectories:
-  if(smooth_signif){
-
-    best_traj <- best_traj %>%
-      dplyr::mutate(signif_model = paste0("max_shape_", signif_model),
-                    best_aic = ifelse(best_aic != "max_shape_chg" &
-                                        signif_model != best_aic,
-                                      signif_model, best_aic))
-  }
-
-  # Final reshaping of the results:
-  best_traj <- best_traj %>%
-    dplyr::filter(best_aic==best_model) %>%
-    {if(str == "aic_asd") dplyr::select(., -best_aic & -weight_aic_asd)
-      else dplyr::select(., -best_aic)} %>%
-    dplyr::mutate(simu_id = factor(simu_id),
-                  traj = traj %>% factor(levels = traj_lvl),
-                  class = dplyr::case_when(
-                    stringr::str_detect(traj,"stable_constant") ~ "no_change",
-                    # acts as smooth significant for 1st order
-                    stringr::str_detect(traj, "constant") ~ "linear",
-                    stringr::str_detect(traj, "breakpoint") ~ "abrupt",
-                    stringr::str_detect(traj, "acc|dec|conc|conv") ~ "quadratic"
-                  ) %>% factor(levels = class_lvl),
-                  trend = trend %>% factor(levels = c("stable", "decrease",
-                                                      "increase"))) %>%
-    dplyr::rename(weight_aic_no_change = weight_aic_nch,
-                  weight_aic_linear = weight_aic_lin,
-                  weight_aic_quadratic = weight_aic_pol,
-                  weight_aic_abrupt = weight_aic_chg,
-                  nrmse_no_change = nrmse_nch,
-                  nrmse_linear = nrmse_lin,
-                  nrmse_quadratic = nrmse_pol,
-                  nrmse_abrupt = nrmse_chg) %>%
-    dplyr::relocate(where(is.factor)) %>%
-    dplyr::relocate(c(simu_id, best_model))
-
-  return(best_traj)
-
-}
-
-
-#' Run timeseries classification (for empirical data)
+#' Run time series classification (for empirical data)
 #'
 #' @param df_list List of data frames with timeseries to classify.
 #' @param min_len Minimal timeseries length to consider.
-#' @param str Character specifying the type of structure to use
-#' for classification ("aic","aic_asd").
-#' @param asd_thr Numeric threshold for as_detect method.
-#' @param makeplots Logical that indicate whether to make plots
-#' (slows down computation if true).
-#' @param run_loo Logical, whether to perform leave-one-out process.
-#' @param two_bkps Logical, if true, looks for more than one breakpoints.
-#' @param smooth_signif Logical, should significance of the coefficient be taken
-#'  into account in the selection of best model.
 #' @param group Column name containing the timeseries identification name (e.g.
 #' species or population name).
 #' @param time Column name containing timeseries time units.
 #' @param variable Column name containing timeseries values.
-#' @param showlastplot Logical, last plot in return value.
+#' @param str Character specifying how the best trajectory is chosen, based on
+#' lowest AICc only ("aic") or also the confirmation with asdetect ("aic_asd").
+#' @param run_loo Logical, whether to perform leave-one-out process.
+#' @param two_bkps Logical, if true, looks for more than one breakpoints.
+#' @param makeplots Logical that indicate whether to generate plots
+#' (slows down computation if true).
 #' @param ind_plot Character to display the plot for a given trajectory
 #' (either "nch", "lin", "pol", "abr", or "best") or all four if NULL.
 #' @param dirname Directory name where to save plots.
-#' @param save_plot Logical, if plots are shown, whether to save plots
+#' @param save_plot Logical, if plots are made, whether to save plots
 #' (either the four trajectory fits or one of a given fit).
+#' @param ... Additional arguments to be passed.
 #'
-#' @return List of two objects:
+#' @return List of three objects:
 #' - Data frame with classification output with one row for each timeseries
 #' - List of detailed classification output for each timeseries
+#' - List summarizing the parameters used for the classification
 #'
 #' @export
 
-
-run_classif_data <- function(df_list, min_len=20, str, asd_thr,
-                             makeplots=TRUE, run_loo, two_bkps, smooth_signif,
-                             group, time, variable, showlastplot=FALSE,
-                             ind_plot=NULL, dirname=NULL, save_plot=TRUE){
+run_classif_data <- function(df_list, min_len=20, group, time, variable,
+                             str, run_loo, two_bkps,
+                             makeplots=FALSE, ind_plot=NULL,
+                             dirname=NULL, save_plot=TRUE, ...){
+  # Load arguments:
+  l <- list(...)
 
   # List of timeseries meeting the length criterion:
   df_list <- df_list[df_list %>% lapply(nrow)>=min_len]
@@ -2064,28 +1986,24 @@ run_classif_data <- function(df_list, min_len=20, str, asd_thr,
   # Classify for all timeseries of this type:
   traj_ts <- data.frame()
   outlist <- list()
-  thr <- NULL # No more used
 
-  for (i in 1:length(df_list)){
+  for (i in 1:length(df_list)){ # by group or population
 
     set <- df_list[[i]] %>%
-      dplyr::rename(scen = .data[[group]],
-                    year = .data[[time]]) %>%
-      dplyr::select(scen, year, all_of(variable)) %>%
-      prep_data(thr=thr)
+      dplyr::rename(scen = dplyr::all_of(group)) %>%
+      dplyr::select(scen, dplyr::all_of(time), all_of(variable)) %>%
+      tidyr::drop_na() %>%
+      prep_data_simpl()
 
     set_length <- nrow(set$ts[[1]])
 
     if(str == "aic") abr_mtd <- c("chg")
     if(str == "aic_asd") abr_mtd <- c("chg", "asd")
 
-    trajs <- traj_class(sets=set, str=str, abr_mtd=abr_mtd, asd_thr=asd_thr,
-                        asd_chk=TRUE, makeplots=makeplots,
+    trajs <- traj_class(sets=set, str=str, abr_mtd=abr_mtd,
                         run_loo=run_loo, two_bkps=two_bkps,
-                        smooth_signif=smooth_signif, showlastplot=showlastplot,
-                        ind_plot=ind_plot, lowwl=5, highwl="default",
-                        mad_thr=3, edge_lim=5, congr_brk=5, dirname=dirname,
-                        save_plot=save_plot)
+                        makeplots=makeplots, ind_plot=ind_plot,
+                        dirname=dirname, save_plot=save_plot, ...)
 
     traj_ts <- traj_ts %>% dplyr::bind_rows(trajs$best_traj)
     outlist[[names(df_list)[i]]] <- trajs
@@ -2093,17 +2011,17 @@ run_classif_data <- function(df_list, min_len=20, str, asd_thr,
     if (i%%10 == 0) print(paste0(i,"/",length(df_list)))
   }
 
-  # traj_ts_full <- traj_ts %>%
-  #   dplyr::mutate(species = simu_id %>%
-  #                   sub("_iter01","", .))
+  traj_ts_full <- traj_ts %>%
+    dplyr::mutate(species = simu_id %>%
+                    sub("_iter01","", .))
 
-  return(list("traj_ts"=traj_ts, "outlist"=outlist))
+  return(list("traj_ts_full"=traj_ts_full, "outlist"=outlist,
+              "param_list"=trajs$param_list))
 
 }
 
 
-
-# IV) Make plots --------------------------------------------------------------
+## Make plots --------------------------------------------------------------
 
 
 #' Make classification output plots
@@ -2599,433 +2517,5 @@ plot_traj_multi_abr <- function(sets, rslt, plot_class, best_traj,
 
     return(list("plots"=plots))
   }
-}
-
-
-
-#' Plot simulations in a simple way
-#'
-#' @param lib_ts Data frame with simulated timeseries.
-#' @param var Column name containing timeseries values.
-#' @param tbcolor Line color.
-#' @param alpha Line transparency.
-#' @param xname Character to name x axis.
-#' @param yname Character to name y axis.
-#' @param ylim Maximal value to constrain y axis.
-#'
-#' @return Minimal plot with TB curve.
-#'
-#' @export
-
-plot_simu_simple <- function (lib_ts, var, tbcolor="black", alpha=1,
-                              xname="", yname="", ylim=12.5){
-
-  TB_plot <- ggplot(lib_ts, aes(x=year, y=get(var),
-                                color=as.factor(iter), group=iter))+
-    geom_line(col=tbcolor, alpha=alpha)+
-    scale_x_continuous(name = xname)+
-    scale_y_continuous(name = yname)+
-    expand_limits(y = c(0, ylim))+
-    theme_light()+
-    theme(legend.position = "none")
-
-  return(TB_plot)
-}
-
-
-# VI) Additional features -----------------------------------------------------
-
-
-#' Plot sunburst pie chart by trajectory (quadratic detailed)
-#'
-#' @param df_sum a data frame with sums for trend and class.
-#' @param title title of the chart.
-#' @param size relative size of the chart.
-#' @param no_text if true, text (name of trajectories and proportions) is disabled.
-#' @param no_caption if true, caption (number of timeseries) is disabled.
-#'
-#' @return a ggplot with the sunburst pie chart.
-#' @export
-
-sunburst_traj_plot_det <- function(df_sum, title=NULL, size=7,
-                                   no_text=FALSE, no_caption=FALSE){
-
-  # library(ggrepel)
-
-  df_sum <- df_sum %>%
-    dplyr::mutate(p = n/sum(n)*100)
-
-  innerCircleData <- df_sum %>%
-    dplyr::group_by(class) %>%
-    dplyr::summarise(tot_rev = sum(p)) %>%
-    dplyr::ungroup() %>%
-    dplyr::mutate(
-      ymax = cumsum(tot_rev),
-      ymin = lag(ymax, n = 1, default = 0),
-      csum = rev(cumsum(rev(tot_rev))),
-      pos = tot_rev/2 + lead(csum, 1),
-      pos = if_else(is.na(pos), tot_rev/2, pos)
-    )
-
-  innerCircle <- ggplot(innerCircleData)+
-    geom_rect(aes(xmin = 0, xmax = 3, ymin = ymin, ymax = ymax, fill = class),
-              color = "white")+
-    scale_fill_manual(values =
-                        c("no_change" = "grey80", "linear" = "grey60",
-                          "quadratic" = "grey40", "abrupt" = "grey30",
-                          "stable_constant"="#E8DECB",
-                          "stable_concave"="#BDAC28","stable_convex"="#F0E67D",
-                          "decrease_constant"="#FFBCBC", "decrease_decelerated"="#FF6666",
-                          "decrease_accelerated"="#FF6606", "decrease_abrupt"="#660000",
-                          "increase_constant"="#99CCFF", "increase_decelerated"="#6161F3",
-                          "increase_accelerated"="#3254CF", "increase_abrupt"="#000066"))+
-    xlim(0, 4)+
-    theme_bw()+
-    coord_polar(theta = "y")
-
-  if(!no_text){
-    innerCircle <- innerCircle+
-      geom_text(aes(x=1.7, y=tot_rev,
-                    label = paste0(stringr::str_to_title(class),"\n",
-                                   round(tot_rev,digits=1),"%")),
-                position = position_stack(vjust = 0.5),
-                size=size)
-  }
-
-  outerCircleData <- df_sum %>%
-    dplyr::group_by(class, spe_class) %>%
-    dplyr::summarise(tot = sum(p)) %>%
-    dplyr::left_join(innerCircleData %>% select(class, tot_rev), by="class") %>%
-    dplyr::left_join(df_sum %>% dplyr::select(trend, spe_class),  by="spe_class") %>%
-    dplyr::ungroup() %>%
-    dplyr::mutate(
-      ymax = cumsum(tot),
-      ymin = lag(ymax, n = 1, default = 0),
-      pos = (ymax+ymin)/2
-    ) %>%
-    dplyr::filter(!is.na(spe_class)) %>%
-    dplyr::mutate(traj_name = dplyr::case_when(
-      class!="quadratic" ~ stringr::str_remove(spe_class, pattern = "\\_.*"),
-      class=="quadratic" ~ stringr::str_replace(spe_class, "_", " "))
-    )
-
-  outerCircle <- innerCircle +
-    geom_rect(
-      data = outerCircleData,
-      aes(xmin = 3, xmax = 4, ymin = ymin, ymax = ymax, fill = spe_class),
-      color = "white")
-
-  if(!no_text){
-    outerCircle <- outerCircle +
-      ggrepel::geom_label_repel(data = outerCircleData,
-                       aes(x=4, y = pos, label = paste0(stringr::str_to_title(
-                         traj_name),"\n",
-                         round(tot, digits=1),"%")),
-                       size = size,
-                       show.legend = FALSE,
-                       label.size=NA, fill=NA)
-  }
-
-
-
-  sunburst <- outerCircle+
-    theme_void()+
-    theme(legend.position="none",
-          # plot.background = element_rect(colour=NA, fill="white"),
-          # plot.margin = margin(1,4,1,4, "cm")
-          plot.caption = element_text(vjust = 1, size=15),
-          plot.title = element_text(vjust = 1, size=15))+
-    ggtitle(title)
-
-  if(!no_caption){
-
-    sunburst <- sunburst+
-      labs(caption = paste("N =", sum(df_sum$n)))
-  }
-
-  return(sunburst)
-
-}
-
-
-#' Plot all summary plots
-#'
-#' @param traj a data frame output from traj_classification function.
-#' @param df_list the list of timeseries classified.
-#' @param var_name a character giving the name of the variable of interest.
-#' @param loo a logical to specify whether LOO used.
-#' @param filename a character to name the output plot (saved in the working directory).
-#' @param title a string to display at the top of the figure.
-#' @param caption a string specifying parameters used.
-#'
-#' @return No return value.
-#' @export
-
-# traj <-
-#   readRDS("analyses/classif/classif_v4.61_SProd_minlen20_normFALSE_looFALSE.rds")
-# var_name <- "Surplus production"
-
-summary_plot <- function(traj, df_list, var_name, loo, filename, title, caption){
-
-  # Class & trend proportions:
-  traj_sum_det <- traj %>%
-    dplyr::mutate(traj = dplyr::case_when(
-      class=="abrupt" & trend=="decrease" ~"decrease_abrupt",
-      class=="abrupt" & trend=="increase" ~"increase_abrupt",
-      class!="abrupt" ~traj
-    )) %>%
-    # dplyr::filter(stockid %in% kept_stocks) %>%
-    dplyr::group_by(traj, trend, class) %>%
-    dplyr::summarise(n=n()) %>%
-    dplyr::mutate(spe_class =
-                    factor(traj,
-                           levels = c("stable_constant",
-                                      "stable_concave","stable_convex",
-                                      "decrease_constant","decrease_decelerated",
-                                      "decrease_accelerated","decrease_abrupt",
-                                      "increase_constant","increase_decelerated",
-                                      "increase_accelerated","increase_abrupt"))) %>%
-    dplyr::ungroup()
-
-  sunburst_traj <- sunburst_traj_plot_det(traj_sum_det, var_name, size=5)
-
-
-  # Quality scores by class:
-  quality_scores_df <- traj %>%
-    dplyr::select(simu_id, dplyr::contains("weight_aic")) %>%
-    tidyr::pivot_longer(cols=-simu_id, names_to = "score_class",
-                        values_to = "wAICc") %>%
-    dplyr::mutate(score_class = sub("weight_aic_","", score_class)) %>%
-    dplyr::left_join(
-      traj %>%
-        dplyr::select(simu_id, dplyr::contains("nrmse")) %>%
-        tidyr::pivot_longer(cols=-simu_id, names_to = "score_class",
-                            values_to = "nrmse") %>%
-        dplyr::mutate(score_class = sub("nrmse_","", score_class)),
-      by=c("simu_id", "score_class")
-    )
-  score_types <- c("wAICc", "nrmse")
-
-  if (loo == TRUE){
-    quality_scores_df <- quality_scores_df %>%
-      dplyr::left_join(
-        traj %>%
-          dplyr::select(simu_id, dplyr::contains("loo")) %>%
-          tidyr::pivot_longer(cols=-simu_id, names_to = "score_class",
-                              values_to = "loo") %>%
-          dplyr::mutate(score_class = sub("loo_","", score_class)),
-        by=c("simu_id", "score_class")
-      )
-    score_types <- c("wAICc", "nrmse", "loo")
-  }
-
-  quality_scores_df <- quality_scores_df %>%
-    dplyr::left_join(traj %>%
-                       dplyr::select(simu_id, class),
-                     by="simu_id") %>%
-    dplyr::filter(class==score_class) %>%
-    dplyr::select(-class) %>%
-    tidyr::pivot_longer(dplyr::all_of(score_types),
-                        names_to = "score_type", values_to="score") %>%
-    dplyr::mutate(score_class = factor(score_class,
-                                       levels=c("no_change", "linear",
-                                                "quadratic","abrupt")))
-
-  quality_scores <- quality_scores_df %>%
-    ggplot()+
-    geom_boxplot(aes(x=score_class, y=score, fill=score_class),
-                 outlier.shape = NA)+
-    scale_fill_manual(values =
-                        c("no_change" = "grey80", "linear" = "grey60",
-                          "quadratic" = "grey40", "abrupt" = "grey30"))+
-    geom_text(data = quality_scores_df %>%
-                dplyr::filter(score_type=="nrmse") %>%
-                dplyr::group_by(score_class) %>%
-                dplyr::summarise(n=n()),
-              aes(score_class, 0.05, label = paste0("n = ",n)),
-              vjust = 1, size=3)+
-    expand_limits(y=0)+
-    labs(x="Class")+
-    facet_wrap(vars(score_type), nrow=1)+
-    theme_light()+
-    theme(legend.position = "none",
-          axis.text.x = element_text(angle=45, vjust=1, hjust=1))+
-    ggtitle("Quality scores")
-
-
-  # Quality scores by trajectory:
-  spe_col <-
-    c("sta_no_change"="#E8DECB", "sta_quadratic"="#E8DE9C",
-      "dec_linear"="#FFBCBC", "dec_quadratic"="#FF6666", "dec_abrupt"="#660000",
-      "inc_linear"="#99CCFF", "inc_quadratic"="#6161F3", "inc_abrupt"="#000066")
-
-  quality_scores_traj_df <- traj %>%
-    dplyr::select(simu_id, trend, traj, dplyr::contains("weight_aic")) %>%
-    tidyr::pivot_longer(cols=-c(simu_id, trend, traj),
-                        names_to = "score_class",
-                        values_to = "wAICc") %>%
-    dplyr::mutate(score_class = sub("weight_aic_","", score_class)) %>%
-    dplyr::left_join(
-      traj %>%
-        dplyr::select(simu_id, dplyr::contains("nrmse")) %>%
-        tidyr::pivot_longer(cols=-simu_id,
-                            names_to = "score_class",
-                            values_to = "nrmse") %>%
-        dplyr::mutate(score_class = sub("nrmse_","", score_class)),
-      by=c("simu_id", "score_class")
-    )
-  score_types <- c("wAICc", "nrmse")
-
-  if (loo == TRUE){
-    quality_scores_traj_df <- quality_scores_traj_df %>%
-      dplyr::left_join(
-        traj %>%
-          dplyr::select(simu_id, dplyr::contains("loo")) %>%
-          tidyr::pivot_longer(cols=-simu_id, names_to = "score_class",
-                              values_to = "loo") %>%
-          dplyr::mutate(score_class = sub("loo_","", score_class)),
-        by=c("simu_id", "score_class")
-      )
-    score_types <- c("wAICc", "nrmse", "loo")
-  }
-
-  quality_scores_traj_df <- quality_scores_traj_df %>%
-    dplyr::left_join(traj %>%
-                       dplyr::select(simu_id, class),
-                     by="simu_id") %>%
-    dplyr::filter(class==score_class) %>%
-    dplyr::select(-class) %>%
-    tidyr::pivot_longer(dplyr::all_of(score_types),
-                        names_to = "score_type", values_to="score") %>%
-    dplyr::mutate(spe_class = factor(paste0(
-      stringr::str_extract(trend, "^.{3}"), "_", score_class),
-      levels = c("sta_no_change","sta_quadratic","dec_linear","dec_quadratic",
-                 "dec_abrupt","inc_linear","inc_quadratic","inc_abrupt")))
-
-  quality_scores_traj <- quality_scores_traj_df %>%
-    ggplot()+
-    geom_boxplot(aes(x=spe_class, y=score, fill=spe_class),
-                 outlier.shape = NA)+
-    scale_fill_manual(values = spe_col)+
-    geom_text(data = quality_scores_traj_df %>%
-                dplyr::filter(score_type=="nrmse") %>%
-                dplyr::group_by(spe_class) %>%
-                dplyr::summarise(n=n()),
-              aes(spe_class, 0.05, label = paste0("n = ",n)),
-              vjust = 1, size=3)+
-    labs(x="Trajectory")+
-    facet_wrap(vars(score_type), nrow=1)+
-    theme_light()+
-    theme(legend.position = "none",
-          axis.text.x = element_text(angle=45, vjust=1, hjust=1))
-
-  # Temporal coverage of timeseries:
-  ts_cover_df <- df_list %>%
-    lapply(function(x)
-      data.frame(first = unlist(x[1,1], use.names=FALSE),
-                 last = unlist(x[nrow(x),1], use.names=FALSE),
-                 gaps = ifelse(
-                   unlist(x[nrow(x),1], use.names=FALSE) -
-                     unlist(x[1,1], use.names=FALSE) + 1 == nrow(x),
-                   FALSE, TRUE)
-      )) %>% do.call(what=dplyr::bind_rows) %>%
-    dplyr::arrange(first, -last) %>%
-    dplyr::mutate(id = row_number())
-
-  if(sapply(df_list[[1]], lubridate::is.Date)[[1]]==TRUE){
-    ts_cover_df <- ts_cover_df %>%
-      dplyr::mutate(first = lubridate::as_date(first),
-                    last = lubridate::as_date(last))}
-
-  ts_cover <- ts_cover_df %>%
-    ggplot() +
-    geom_segment(aes(x=id, xend=id, y=first, yend=last, color = gaps)) +
-    scale_color_manual(values = c("FALSE" = "grey70", "TRUE" = "orangered")) +
-    theme_light() +
-    coord_flip() +
-    xlab("Timeseries") +
-    ylab(names(df_list[[1]])[1]) +
-    theme(
-      # panel.grid.major.y = element_blank(),
-      panel.border = element_blank(),
-      # axis.ticks.y = element_blank(),
-      # axis.text.y = element_blank()
-    ) +
-    guides(color = "none")
-
-  # Temporal distribution of abrupt shifts:
-  if ("abrupt" %in% traj$class){
-
-    temp_abr_sft_df <- traj %>%
-      dplyr::filter(class=="abrupt") %>%
-      dplyr::group_by(loc_brk_chg, trend) %>%
-      dplyr::summarise(n_brk=n())
-
-    if(sapply(df_list[[1]], lubridate::is.Date)[[1]]==TRUE){
-      temp_abr_sft_df <- temp_abr_sft_df %>%
-        dplyr::mutate(loc_brk_chg = lubridate::as_date(loc_brk_chg))
-    }
-
-    temp_abr_sft <- temp_abr_sft_df %>%
-      ggplot()+
-      geom_col(aes(x=loc_brk_chg, y=n_brk, fill=trend),
-               inherit.aes = FALSE)+
-      facet_wrap(vars(trend), ncol=1)+
-      scale_fill_manual(values = c("decrease"="#660000", "increase"="#000066"))+
-      labs(x="Breakdate", y="count")+
-      theme_light()+
-      theme(legend.position = "none")
-
-    if(sapply(df_list[[1]], lubridate::is.Date)[[1]]==FALSE){
-      temp_abr_sft <- temp_abr_sft +
-        scale_x_continuous(breaks = scales::breaks_width(
-          max(floor((max(traj$loc_brk_chg)-min(traj$loc_brk_chg))/8),1)
-        ))
-    }
-
-  } else { temp_abr_sft <- ggplot() }
-
-
-
-  # Distribution of abruptness of abrupt shifts:
-  if ("abrupt" %in% traj$class){
-
-    abrptnss_distr <- traj %>%
-      dplyr::filter(class=="abrupt") %>%
-      dplyr::select(abruptness) %>%
-      dplyr::arrange(desc(abruptness)) %>%
-      dplyr::mutate(sign = ifelse(abruptness>0, "increase", "decrease"),
-                    x = row_number()/nrow(.)) %>%
-      ggplot()+
-      geom_segment( aes(x=x, xend=x, y=0, yend=abruptness, color=sign),
-                    linewidth=1.3, alpha=0.9) +
-      theme_light() +
-      theme(
-        legend.position = "none",
-        panel.border = element_blank(),
-      ) +
-      scale_x_continuous(breaks = scales::breaks_width(0.1))+
-      scale_colour_manual(values = c("decrease"="#660000", "increase"="#000066"))+
-      expand_limits(y=-1)+
-      labs(x="Proportion of abrupt timeseries", y="Abruptness")+
-      coord_flip()
-
-  } else { abrptnss_distr <- ggplot() }
-
-
-  # Combine all plots:
-  p <- (sunburst_traj + (quality_scores / quality_scores_traj)) /
-    (ts_cover + abrptnss_distr + temp_abr_sft) +
-    patchwork::plot_layout(nrow = 2, height = c(2, 1)) +
-    plot_annotation(title = title,
-                    caption = caption,
-                    theme = theme(plot.title = element_text(size = 20)))
-
-
-  ggsave(filename=paste0(filename,"_summary_fig.png"),
-         plot=p,
-         width=22, height=14)
-
-  return(invisible(NULL))
 }
 
