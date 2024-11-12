@@ -17,6 +17,7 @@ load("data/RAMLDB v4.61/R Data/DBdata[asmt][v4.61].RData")
 # Compute and add surplus production timeseries to the data:
 add_surplus()
 
+
 # Load classified trajectories --------------------------------------------
 
 traj_SProd <-
@@ -93,14 +94,15 @@ traj_SProd_sum_det <- traj_SProd %>%
   )) %>%
   dplyr::group_by(traj, trend, class) %>%
   dplyr::summarise(n=n()) %>%
-  dplyr::mutate(spe_class =
-                  factor(traj,
-                         levels = c("stable_constant",
-                                    "stable_concave","stable_convex",
-                                    "decrease_constant","decrease_decelerated",
-                                    "decrease_accelerated","decrease_abrupt",
-                                    "increase_constant","increase_decelerated",
-                                    "increase_accelerated","increase_abrupt"))) %>%
+  dplyr::mutate(
+    spe_class =
+      factor(traj,
+             levels = c("stable_constant",
+                        "stable_concave","stable_convex",
+                        "decrease_constant","decrease_decelerated",
+                        "decrease_accelerated","decrease_abrupt",
+                        "increase_constant","increase_decelerated",
+                        "increase_accelerated","increase_abrupt"))) %>%
   dplyr::ungroup()
 
 traj_SProd_sum_det
@@ -286,12 +288,13 @@ traj_SProd_sum_area <- traj_SProd %>%
                       "stable_quadratic", traj)) %>%
       dplyr::group_by(traj, trend, class) %>%
       dplyr::summarise(n=n()) %>%
-      dplyr::mutate(spe_class =
-                      factor(traj,
-                             levels = c("stable_constant","stable_quadratic",
-                                        "decrease_linear","decrease_quadratic",
-                                        "decrease_abrupt","increase_linear",
-                                        "increase_quadratic","increase_abrupt"))) %>%
+      dplyr::mutate(
+        spe_class =
+          factor(traj,
+                 levels = c("stable_constant","stable_quadratic",
+                            "decrease_linear","decrease_quadratic",
+                            "decrease_abrupt","increase_linear",
+                            "increase_quadratic","increase_abrupt"))) %>%
       dplyr::ungroup() %>%
       sunburst_traj_plot(.,
                          title=NULL,
@@ -301,11 +304,11 @@ traj_SProd_sum_area <- traj_SProd %>%
   }, x=., y=names(.), SIMPLIFY = FALSE)
 
 
-centroid_major <- tibble(x=centroids$lon,
-                         y=centroids$lat,
-                         area=centroids$F_CODE,
-                         width=centroids$sz
-) %>%
+centroid_major <-
+  tibble(x=centroids$lon,
+         y=centroids$lat,
+         area=centroids$F_CODE,
+         width=centroids$sz) %>%
   dplyr::right_join(tibble(area = names(traj_SProd_sum_area),
                            sunburst=traj_SProd_sum_area),
                     by = "area")
@@ -402,84 +405,6 @@ chi_traj_fao$stdres %>%
 # fisher.test(traj_mat_fao, simulate.p.value=TRUE, B=1e5)
 
 
-# Species by class
-class_mat_ord <- traj_SProd %>%
-  dplyr::group_by(ordername, class) %>%
-  dplyr::summarise(n=n()) %>%
-  tidyr::pivot_wider(names_from=class, values_from=n) %>%
-  tibble::column_to_rownames("ordername") %>%
-  dplyr::mutate(dplyr::across(everything(), ~ ifelse(is.na(.x), 0, .))) %>%
-  as.matrix()
-
-mosaicplot(class_mat_ord, main="class by taxonomic order", color = TRUE)
-
-set.seed(1)
-(chi_clas_ord <- chisq.test(class_mat_ord, simulate.p.value = TRUE, B=1e5))
-# p-value = 0.09844
-
-
-# Species by trajectory (abrupt decrease, abrupt increase, nonabrupt)
-traj_SProd_sum_ord <- traj_SProd %>%
-  dplyr::mutate(traj = dplyr::case_when(
-    class=="abrupt" & trend=="decrease" ~"decrease_abrupt",
-    class=="abrupt" & trend=="increase" ~"increase_abrupt",
-    class!="abrupt" ~"nonabrupt")) %>%
-  dplyr::group_by(traj, ordername) %>%
-  dplyr::summarise(n=n()) %>%
-  dplyr::ungroup()
-
-traj_mat_ord <- traj_SProd_sum_ord %>%
-  tidyr::pivot_wider(names_from=traj, values_from=n) %>%
-  tibble::column_to_rownames("ordername") %>%
-  dplyr::mutate(dplyr::across(everything(), ~ ifelse(is.na(.x), 0, .))) %>%
-  as.matrix()
-
-mosaicplot(traj_mat_ord, main="class by taxonomic order", color = TRUE)
-
-set.seed(1)
-(chi_traj_ord <- chisq.test(traj_mat_ord, simulate.p.value=TRUE, B=1e5))
-# p-value = 0.1743
-
-
-# Species by class
-class_mat_fam <- traj_SProd %>%
-  dplyr::group_by(family, class) %>%
-  dplyr::summarise(n=n()) %>%
-  tidyr::pivot_wider(names_from=class, values_from=n) %>%
-  tibble::column_to_rownames("family") %>%
-  dplyr::mutate(dplyr::across(everything(), ~ ifelse(is.na(.x), 0, .))) %>%
-  as.matrix()
-
-mosaicplot(class_mat_fam, main="class by taxonomic family", color = TRUE)
-
-set.seed(1)
-(chi_clas_fam <- chisq.test(class_mat_fam, simulate.p.value = TRUE, B=1e5))
-# p-value = 0.09844
-
-
-# Species by trajectory (abrupt decrease, abrupt increase, nonabrupt)
-traj_SProd_sum_fam <- traj_SProd %>%
-  dplyr::mutate(traj = dplyr::case_when(
-    class=="abrupt" & trend=="decrease" ~"decrease_abrupt",
-    class=="abrupt" & trend=="increase" ~"increase_abrupt",
-    class!="abrupt" ~"nonabrupt")) %>%
-  dplyr::group_by(traj, family) %>%
-  dplyr::summarise(n=n()) %>%
-  dplyr::ungroup()
-
-traj_mat_fam <- traj_SProd_sum_fam %>%
-  tidyr::pivot_wider(names_from=traj, values_from=n) %>%
-  tibble::column_to_rownames("family") %>%
-  dplyr::mutate(dplyr::across(everything(), ~ ifelse(is.na(.x), 0, .))) %>%
-  as.matrix()
-
-mosaicplot(traj_mat_fam, main="class by taxonomic family", color = TRUE)
-
-set.seed(1)
-(chi_traj_fam <- chisq.test(traj_mat_fam, simulate.p.value=TRUE, B=1e5))
-# p-value = 0.1743
-
-
 ## Fig 3 - Explanatory factors of PAS ----------------------------
 
 dir.create("res/figs/fig3", showWarnings=FALSE)
@@ -487,7 +412,7 @@ dir.create("res/figs/fig3", showWarnings=FALSE)
 # Add traits to stocks:
 traits_default <- traits_fun(traj_SProd)
 
-# readr::write_csv(traits_default, "res/classif/traj_SProd_classif_traits.csv")
+readr::write_csv(traits_default, "res/classif/traj_SProd_classif_traits.csv")
 traits_default <- readr::read_csv("res/classif/traj_SProd_classif_traits.csv")
 
 mod_df01_default <-
@@ -526,32 +451,31 @@ modgam_dec <- mgcv::gamm(
   formula=shift_dec ~ tm + Lm +
     DemersPelag +
     sst_avg_prshf + sst_change_prshf +
-    # sst_avg + sst_change +
     mean_ER_prshf + ER_change_prshf +
     s(X, Y) + s(length, bs="re") +
-    s(ordername, bs="re") + s(family, bs="re") + s(Species, bs="re"),
+    s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
   data=df_scl)
 
 summary(modgam_dec$gam)
+table(df_scl$shift_dec)
 
 # Plot model estimates
-(m_dec <- ggstats::ggcoef_model(modgam_dec$gam,
-                                colour = NULL, stripped_rows = FALSE,
-                                conf.level = 0.95,
-                                significance = 0.05,
-                                add_reference_rows=TRUE,
-                                point_size = 3,
-                                point_stroke = 0.5,
-                                x = "estimate"))
+(m_dec <- ggstats::ggcoef_model(
+  modgam_dec$gam,
+  colour = NULL, stripped_rows = FALSE,
+  conf.level = 0.95,
+  significance = 0.05,
+  add_reference_rows=TRUE,
+  point_size = 3,
+  point_stroke = 0.5,
+  x = "estimate"))
 
 pdf(file = "res/figs/fig3/fig3a_dec.pdf",
     width=6, height=4)
 m_dec
 dev.off()
-
-table(df_scl$shift_dec)
 
 
 ### 3b - Abrupt increases -----
@@ -563,297 +487,42 @@ modgam_inc <- mgcv::gamm(
     sst_avg_prshf + sst_change_prshf +
     mean_ER_prshf + ER_change_prshf +
     s(X, Y) + s(length, bs="re") +
-    s(ordername, bs="re") + s(family, bs="re") + s(Species, bs="re"),
+    s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
   data=df_scl)
 
 summary(modgam_inc$gam)
+table(df_scl$shift_inc)
 
 # Plot model estimates
-(m_inc <- ggstats::ggcoef_model(modgam_inc$gam,
-                                colour = NULL, stripped_rows = FALSE,
-                                conf.level = 0.95,
-                                significance = 0.05,
-                                add_reference_rows=TRUE,
-                                point_size = 3,
-                                point_stroke = 0.5,
-                                x = "estimate"))
+(m_inc <- ggstats::ggcoef_model(
+  modgam_inc$gam,
+  colour = NULL, stripped_rows = FALSE,
+  conf.level = 0.95,
+  significance = 0.05,
+  add_reference_rows=TRUE,
+  point_size = 3,
+  point_stroke = 0.5,
+  x = "estimate"))
 
 pdf(file = "res/figs/fig3/fig3b_inc.pdf",
     width=6, height=4)
 m_inc
 dev.off()
 
-table(df_scl$shift_inc)
 
 # => Panels assembled with Inkscape to arrange the legends
 
 
 ## Fig 4  ------------------------------------------------------------------
 
-
-#' Render plots combining abrupt shifts and collapse
-#'
-#' @param traj_SProd A classification summary.
-#' @param coll_def A vector defining the threshold of collapsed state.
-#' The 1st value indicates the parameter considered ("bavg", "bmax", or "bmsy",
-#' for average, maximum biomass, and biomass at MSY respectively). The second
-#' value indicates the fraction of biomass parameter considered as threshold.
-#' @param csec_coll An integer specifying the minimal number of consecutive
-#' years of under collapse threshold to be considered as collapsed.
-#'
-#' @return
-#' @export
-#'
-#' @examples
-
-# coll_def=c("bavg", 0.25) # Essington et al. 2015
-# coll_def=c("bmsy", 0.2) # Costello et al. 2012
-
-shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
-
-  # Add info about collapse:
-  coll <- add_collapsed(traj_SProd, coll_def=coll_def, csec_coll=csec_coll)
-
-  # Prepare data frame for plot:
-  prop_coll_shift_df <- coll %>%
-    dplyr::mutate(traj_simpl = dplyr::case_when(
-      traj %in% c("stable constant", "stable convex", "stable concave") ~ "stable",
-      traj %in% c("increase linear", "increase decelerated", "increase accelerated") ~ "increase gradual",
-      traj %in% c("increase abrupt") ~ "positive PAS",
-      traj %in% c("decrease linear", "decrease decelerated") ~ "decrease gradual",
-      traj %in% c("decrease abrupt") ~ "negative PAS"),
-      traj_simpl = factor(traj_simpl,
-                          levels=c("stable", "increase gradual", "positive PAS",
-                                   "decrease gradual", "negative PAS"))) %>%
-    dplyr::group_by(traj_simpl, did_collapse, coll_def) %>%
-    dplyr::summarise(count=n()) %>%
-    dplyr::group_by(did_collapse) %>%
-    dplyr::mutate(prop = count/sum(count))
-
-  # 4a - Proportion plot ----
-  (prop_coll_shift <- prop_coll_shift_df %>%
-     ggplot()+
-     geom_col(aes(x=did_collapse, y=count, fill=traj_simpl),
-              position="fill", width=0.5)+
-     geom_text(aes(x=did_collapse, y=count, label=count, group=traj_simpl,
-                   col=grepl("PAS", traj_simpl)),
-               size = 4, position = position_fill(vjust = 0.5))+
-     scale_y_continuous(labels = scales::percent, expand = c(0,0))+
-     scale_fill_manual(
-       values =
-         c("stable"="#E8DE9C",
-           "decrease gradual"="#F08080", "negative PAS"="#660000",
-           "increase gradual"="#99CCFF", "positive PAS"="#000066"))+
-     scale_color_manual(values = c("TRUE"="white", "FALSE"="black"))+
-     labs(y="frequency", fill="Trajectory")+
-     labs(x="Did stock collapsed?")+
-     theme_classic()+
-     labs(tag="A")+
-     theme(axis.text = element_text(size=12),
-           axis.text.x = element_text(size=15),
-           axis.title = element_text(size=15),
-           plot.tag=element_text(size=20, face="bold"))+
-     guides(color="none", fill="none"))
-
-
-  # 4b - Abruptness plot ----
-  (abr_coll_shift <- coll %>%
-
-     dplyr::filter(class=="abrupt") %>%
-     ggplot()+
-     geom_boxplot(aes(x=did_collapse, y=mag, fill=trend), col="grey30"
-                  # , outlier.shape = NA
-     )+
-     scale_fill_manual(values =
-                         c("decrease"="#660000", "increase"="#000066"))+
-     labs(y="shift magnitude")+
-     labs(x="Did stock collapsed?")+
-     coord_cartesian(y=c(-0.8, 0.8))+
-     geom_hline(yintercept = 0, lty=1)+
-     theme_classic()+
-     labs(tag="B")+
-     theme(axis.text = element_text(size=12),
-           axis.text.x = element_text(size=15),
-           axis.title = element_text(size=15),
-           plot.tag=element_text(size=20, face="bold"))+
-     guides(fill="none"))
-
-
-  # 4c - Timing of abrupt shifts relative to collapse ----
-  (time_coll_shift <- coll %>%
-     dplyr::mutate(diff = loc_brk_chg-first_coll_y,
-                   diff = ifelse(class == "abrupt", diff, NA)
-     ) %>%
-     dplyr::filter(class=="abrupt") %>%
-     tidyr::drop_na(diff) %>%
-     ggplot()+
-     geom_histogram(aes(x=diff, fill=trend), col="grey30", binwidth = 2.5, origin=0)+
-     geom_vline(xintercept = 0, lty="dotted")+
-     scale_fill_manual(values =
-                         c("decrease"="#660000", "increase"="#000066"))+
-
-     labs(x="year since collapse", y="number of stocks")+
-     facet_wrap(vars(traj), nrow = 2)+
-     theme_bw()+
-     scale_y_continuous(expand=c(0,0))+
-     expand_limits(y=c(0,4))+
-     scale_x_continuous(breaks = seq(-50, 50, 5))+
-     theme(strip.text = element_text(colour = "black"))+
-     guides(fill="none")+
-     labs(tag="C")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           # panel.grid.major.y = element_blank(),
-           panel.grid.minor.y = element_blank(),
-           strip.text = element_text(size=15),
-           plot.tag=element_text(size=20, face="bold")))
-
-
-
-  # Correlation proportion vs. warming --------------------------
-
-  atemp_LME <- readr::read_csv("data/spatial_data/lme_yearly_had_sst.csv")
-
-  asstchange_LME <- atemp_LME %>%
-    dplyr::filter(year>=1950) %>%
-    dplyr::group_by(lme) %>%
-    dplyr::summarise(sst_change=summary(lm(sst_c~year))$coefficients["year","Estimate"])
-
-  # Define main LME
-  frac_lme <- readr::read_csv("data/spatial_data/frac_lme.csv")
-  main_lme <- frac_lme %>%
-    dplyr::filter(!grepl("Ocean", LME_NAME)) %>%
-    dplyr::group_by(stockid) %>%
-    dplyr::slice_max(prop_area)
-
-  # Specify high-sea "LME" manually
-  {
-    main_lme[main_lme$stockid=="ALBANATL","LME_NAME"] <- "North Atlantic Ocean"
-    main_lme[main_lme$stockid=="BIGEYECWPAC","LME_NAME"] <- "North Pacific Ocean"
-    main_lme[main_lme$stockid=="BLKMARLINIO","LME_NAME"] <- "Indian Ocean"
-    main_lme[main_lme$stockid=="BLSHARIO","LME_NAME"] <- "Indian Ocean"
-    main_lme[main_lme$stockid=="BMARLINATL","LME_NAME"] <- "South Atlantic Ocean"
-    main_lme[main_lme$stockid=="BMARLINIO","LME_NAME"] <- "Indian Ocean"
-    main_lme[main_lme$stockid=="PACBTUNA","LME_NAME"] <- "South Pacific Ocean"
-    main_lme[main_lme$stockid=="SAILEATL","LME_NAME"] <- "South Atlantic Ocean"
-    main_lme[main_lme$stockid=="SAILWATL","LME_NAME"] <- "South Atlantic Ocean"
-    main_lme[main_lme$stockid=="SBT","LME_NAME"] <- "Indian Ocean"
-    main_lme[main_lme$stockid=="SKJCIO","LME_NAME"] <- "Indian Ocean"
-    main_lme[main_lme$stockid=="SKJCWPAC","LME_NAME"] <- "North Pacific Ocean"
-    main_lme[main_lme$stockid=="SKJEATL","LME_NAME"] <- "South Atlantic Ocean"
-    main_lme[main_lme$stockid=="SKJWATL","LME_NAME"] <- "North Atlantic Ocean"
-    main_lme[main_lme$stockid=="STMARLINIO","LME_NAME"] <- "Indian Ocean"
-    main_lme[main_lme$stockid=="STMARLINNEPAC","LME_NAME"] <- "North Pacific Ocean"
-    main_lme[main_lme$stockid=="STMARLINSWPO","LME_NAME"] <- "South Pacific Ocean"
-    main_lme[main_lme$stockid=="STMARLINWCNPAC","LME_NAME"] <- "North Pacific Ocean"
-    main_lme[main_lme$stockid=="SWORDEPAC","LME_NAME"] <- "South Pacific Ocean"
-    main_lme[main_lme$stockid=="SWORDNATL","LME_NAME"] <- "North Atlantic Ocean"
-    main_lme[main_lme$stockid=="SWORDNPAC","LME_NAME"] <- "North Pacific Ocean"
-    main_lme[main_lme$stockid=="WMARLINATL","LME_NAME"] <- "South Pacific Ocean"
-    main_lme[main_lme$stockid=="YFINCWPAC","LME_NAME"] <- "North Pacific Ocean"
-    }
-
-  prop_warm_plot <- function(df, main_lme, filter, weight=NULL, min_tot=0){
-
-    prop_sstchange_by_lme <- dplyr::left_join(df, main_lme, by="stockid") %>%
-      dplyr::group_by(LME_NAME) %>%
-      dplyr::summarise(n_tot = n()) %>%
-      dplyr::left_join(
-        dplyr::left_join(df, main_lme, by="stockid") %>%
-          dplyr::filter(eval(filter)) %>%
-          dplyr::group_by(LME_NAME) %>%
-          dplyr::summarise(count = n()),
-        by="LME_NAME") %>%
-      dplyr::mutate(prop = count/n_tot) %>%
-      left_join(asstchange_LME, by=c("LME_NAME"="lme"))
-
-    if (weight=="n_tot"){
-      mod <- lm(prop~sst_change,
-                weights=n_tot,
-                prop_sstchange_by_lme %>%
-                  dplyr::filter(n_tot>min_tot))
-    } else {
-      mod <- lm(prop~sst_change,
-                prop_sstchange_by_lme %>%
-                  dplyr::filter(n_tot>min_tot))
-    }
-
-    summ <- summary(mod)
-    coeff <- paste0("p = ", format(round(summ$coefficients[2,4],3), nsmall=3),
-                    ", R2 = ", round(summ$adj.r.squared, 2))
-
-    if (summ$coefficients[2,4] < 0.05){
-      line <- "solid"
-    } else {
-      line <- "dashed"
-    }
-
-    plot <- prop_sstchange_by_lme %>%
-      dplyr::filter(n_tot>min_tot) %>%
-      tidyr::drop_na(prop) %>%
-      ggplot(aes(x=sst_change, y=prop))+
-      geom_point(aes(size=n_tot))+
-      geom_abline(intercept=summ$coefficients[1,1],
-                  slope=summ$coefficients[2,1],
-                  col="grey30", lty=line)+
-      geom_text(x = 0.007, y = 0.9, label = coeff, size=5, check_overlap = TRUE)+
-      coord_cartesian(ylim=c(0,1))+
-      scale_y_continuous(expand=c(0,0))+
-      theme_classic()+
-      guides(size="none")+
-      labs(x="SST rate of change (1950-2020) [°C/y]")
-
-    return(plot)
-  }
-
-  # 4d - Correlation negative PAS vs. warming --------------------------
-  (fig4d <- prop_warm_plot(traj_SProd, main_lme,
-                           expression(class=="abrupt" & trend=="decrease"),
-                           weight="", 1)+
-     labs(y="Proportion of negative PAS",
-          tag="D")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           axis.title.x = element_text(size=13),
-           plot.tag=element_text(size=20, face="bold")))
-
-
-  # 4e - Correlation positive PAS vs. warming --------------------------
-  (fig4e <- prop_warm_plot(traj_SProd, main_lme,
-                           expression(class=="abrupt" & trend=="increase"),
-                           weight="", 1)+
-     labs(y="Proportion of positive PAS",
-          tag="E")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           axis.title.x = element_text(size=13),
-           plot.tag=element_text(size=20, face="bold")))
-
-  # 4f - Correlation collapse vs. warming --------------------------
-
-  (fig4f <- prop_warm_plot(coll, main_lme,
-                           expression(did_collapse=="Yes"),
-                           weight="", 1)+
-     labs(y="Proportion of collapses",
-          tag="F")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           axis.title.x = element_text(size=13),
-           plot.tag=element_text(size=20, face="bold")))
-
-  fig4 <- (prop_coll_shift + abr_coll_shift + time_coll_shift) /
-    (fig4d + fig4e + fig4f)
-
-  return(fig4)
-
-}
+dir.create("res/figs/fig4", showWarnings=FALSE)
 
 fig4 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.25), csec_coll = 2)
 # csec_coll=2 to avoid artifacts
 
-ggsave(filename="res/figs/fig4_bavg0.25_cseccoll2.pdf",
+ggsave(filename="res/figs/fig4/fig4_bavg0.25_cseccoll2.pdf",
        width=14, height=8, plot=fig4)
 
 # => Improved rendering in Inkscape
