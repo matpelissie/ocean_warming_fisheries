@@ -311,10 +311,10 @@ traits_fun <- function(traj_SProd){
     dplyr::select(stockid, scientificname, habitat_raw) %>%
     dplyr::mutate(habitat_raw = stringr::str_to_lower(habitat_raw),
                   habitat = dplyr::case_when(
-      grepl("pelagic|pekagic|pleagic|diadromous", habitat_raw) ~ "pelagic",
-      grepl("demersal", habitat_raw) ~ "demersal",
-      is.na(habitat_raw) ~ NA
-    )) %>%
+                    grepl("pelagic|pekagic|pleagic|diadromous", habitat_raw) ~ "pelagic",
+                    grepl("demersal", habitat_raw) ~ "demersal",
+                    is.na(habitat_raw) ~ NA
+                  )) %>%
     dplyr::mutate(
       # Names for FishBase:
       scientificname =
@@ -606,7 +606,7 @@ traits_fun <- function(traj_SProd){
     dplyr::left_join(
       readxl::read_xlsx(
         paste0("data/spatial_data/stock_boundaries/",
-             "ramldb_v3.8_stock_boundary_table_v2_formatted.xlsx")) %>%
+               "ramldb_v3.8_stock_boundary_table_v2_formatted.xlsx")) %>%
         dplyr::mutate(batch="assess1") %>%
         dplyr::bind_rows(
           readr::read_csv(
@@ -648,8 +648,8 @@ traits_fun <- function(traj_SProd){
       tibble::as_tibble() %>%
       dplyr::mutate(stockid=y) %>%
       suppressWarnings()
-    },
-    stock_pol$assessid_polygon_avail, stock_pol$stockid, SIMPLIFY = FALSE) %>%
+  },
+  stock_pol$assessid_polygon_avail, stock_pol$stockid, SIMPLIFY = FALSE) %>%
     do.call(what=dplyr::bind_rows)
 
   polygons <- polygons %>%
@@ -809,7 +809,7 @@ add_collapsed <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=5){
 
 
 sunburst_traj_plot <- function(df_sum, title=NULL, size=7, size_caption=13,
-                          no_text=FALSE, no_caption=FALSE){
+                               no_text=FALSE, no_caption=FALSE){
 
   df_sum <- df_sum %>%
     dplyr::mutate(p = n/sum(n)*100)
@@ -871,12 +871,12 @@ sunburst_traj_plot <- function(df_sum, title=NULL, size=7, size_caption=13,
   if(!no_text){
     outerCircle <- outerCircle +
       ggrepel::geom_label_repel(data = outerCircleData,
-                       aes(x=4, y = pos, label = paste0(stringr::str_to_title(
-                         trend),"\n",
-                         round(tot, digits=1),"%")),
-                       size = size,
-                       show.legend = FALSE,
-                       label.size=NA, fill=NA)
+                                aes(x=4, y = pos, label = paste0(stringr::str_to_title(
+                                  trend),"\n",
+                                  round(tot, digits=1),"%")),
+                                size = size,
+                                show.legend = FALSE,
+                                label.size=NA, fill=NA)
   }
 
 
@@ -915,7 +915,7 @@ sunburst_traj_plot <- function(df_sum, title=NULL, size=7, size_caption=13,
 
 
 sunburst_traj_plot_det <- function(df_sum, title=NULL, size=7, size_caption=15,
-                               no_text=FALSE, no_caption=FALSE){
+                                   no_text=FALSE, no_caption=FALSE){
 
   df_sum <- df_sum %>%
     dplyr::mutate(p = n/sum(n)*100)
@@ -983,12 +983,12 @@ sunburst_traj_plot_det <- function(df_sum, title=NULL, size=7, size_caption=15,
   if(!no_text){
     outerCircle <- outerCircle +
       ggrepel::geom_label_repel(data = outerCircleData,
-                       aes(x=4, y = pos, label = paste0(stringr::str_to_title(
-                         traj_name),"\n",
-                         round(tot, digits=1),"%")),
-                       size = size,
-                       show.legend = FALSE,
-                       label.size=NA, fill=NA)
+                                aes(x=4, y = pos, label = paste0(stringr::str_to_title(
+                                  traj_name),"\n",
+                                  round(tot, digits=1),"%")),
+                                size = size,
+                                show.legend = FALSE,
+                                label.size=NA, fill=NA)
   }
 
 
@@ -1075,8 +1075,10 @@ prop_warm_plot <- function(df, main_lme, asstchange_LME, filter,
     geom_text(x = 0.007, y = 0.9, label = coeff, size=5, check_overlap = TRUE)+
     coord_cartesian(ylim=c(0,1))+
     scale_y_continuous(expand=c(0,0))+
+    scale_size_continuous(breaks = c(5, 10, 25), name="Stocks by LME")+
     theme_classic()+
-    guides(size="none")+
+    guides(size = guide_legend(position = "inside"))+
+    theme(legend.position.inside = c(0.85, 0.8))+
     labs(x="SST rate of change (1950-2020) [°C/y]")
 
   return(plot)
@@ -1125,81 +1127,81 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
 
   # Proportion plot ---
   (prop_coll_shift <- prop_coll_shift_df %>%
-     ggplot()+
-     geom_col(aes(x=did_collapse, y=count, fill=traj_simpl),
-              position="fill", width=0.5)+
-     geom_text(aes(x=did_collapse, y=count, label=count, group=traj_simpl,
-                   col=grepl("PAS", traj_simpl)),
-               size = 4, position = position_fill(vjust = 0.5))+
-     scale_y_continuous(labels = scales::percent, expand = c(0,0))+
-     scale_fill_manual(
-       values =
-         c("stable"="#E8DE9C",
-           "decrease gradual"="#F08080", "negative PAS"="#660000",
-           "increase gradual"="#99CCFF", "positive PAS"="#000066"))+
-     scale_color_manual(values = c("TRUE"="white", "FALSE"="black"))+
-     labs(y="frequency", fill="Trajectory")+
-     labs(x="Did stock collapsed?")+
-     theme_classic()+
-     labs(tag="A")+
-     theme(axis.text = element_text(size=12),
-           axis.text.x = element_text(size=15),
-           axis.title = element_text(size=15),
-           plot.tag=element_text(size=20, face="bold"))+
-     guides(color="none", fill="none"))
+      ggplot()+
+      geom_col(aes(x=did_collapse, y=count, fill=traj_simpl),
+               position="fill", width=0.5)+
+      geom_text(aes(x=did_collapse, y=count, label=count, group=traj_simpl,
+                    col=grepl("PAS", traj_simpl)),
+                size = 4, position = position_fill(vjust = 0.5))+
+      scale_y_continuous(labels = scales::percent, expand = c(0,0))+
+      scale_fill_manual(
+        values =
+          c("stable"="#E8DE9C",
+            "decrease gradual"="#F08080", "negative PAS"="#660000",
+            "increase gradual"="#99CCFF", "positive PAS"="#000066"))+
+      scale_color_manual(values = c("TRUE"="white", "FALSE"="black"))+
+      labs(y="frequency", fill="Trajectory")+
+      labs(x="Did stock collapsed?")+
+      theme_classic()+
+      labs(tag="A")+
+      theme(axis.text = element_text(size=12),
+            axis.text.x = element_text(size=15),
+            axis.title = element_text(size=15),
+            plot.tag=element_text(size=20, face="bold"))+
+      guides(color="none", fill="none"))
 
 
   # Abruptness plot ---
   (abr_coll_shift <- coll %>%
 
-     dplyr::filter(class=="abrupt") %>%
-     ggplot()+
-     geom_boxplot(aes(x=did_collapse, y=mag, fill=trend), col="grey30"
-                  # , outlier.shape = NA
-     )+
-     scale_fill_manual(values =
-                         c("decrease"="#660000", "increase"="#000066"))+
-     labs(y="shift magnitude")+
-     labs(x="Did stock collapsed?")+
-     coord_cartesian(y=c(-0.8, 0.8))+
-     geom_hline(yintercept = 0, lty=1)+
-     theme_classic()+
-     labs(tag="B")+
-     theme(axis.text = element_text(size=12),
-           axis.text.x = element_text(size=15),
-           axis.title = element_text(size=15),
-           plot.tag=element_text(size=20, face="bold"))+
-     guides(fill="none"))
+      dplyr::filter(class=="abrupt") %>%
+      ggplot()+
+      geom_boxplot(aes(x=did_collapse, y=mag, fill=trend), col="grey30"
+                   # , outlier.shape = NA
+      )+
+      scale_fill_manual(values =
+                          c("decrease"="#660000", "increase"="#000066"))+
+      labs(y="shift magnitude")+
+      labs(x="Did stock collapsed?")+
+      coord_cartesian(y=c(-0.8, 0.8))+
+      geom_hline(yintercept = 0, lty=1)+
+      theme_classic()+
+      labs(tag="B")+
+      theme(axis.text = element_text(size=12),
+            axis.text.x = element_text(size=15),
+            axis.title = element_text(size=15),
+            plot.tag=element_text(size=20, face="bold"))+
+      guides(fill="none"))
 
 
   # Timing of abrupt shifts relative to collapse ---
   (time_coll_shift <- coll %>%
-     dplyr::mutate(diff = loc_brk_chg-first_coll_y,
-                   diff = ifelse(class == "abrupt", diff, NA)
-     ) %>%
-     dplyr::filter(class=="abrupt") %>%
-     tidyr::drop_na(diff) %>%
-     ggplot()+
-     geom_histogram(aes(x=diff, fill=trend), col="grey30", binwidth = 2.5, boundary=0)+
-     geom_vline(xintercept = 0, lty="dotted")+
-     scale_fill_manual(values =
-                         c("decrease"="#660000", "increase"="#000066"))+
+      dplyr::mutate(diff = loc_brk_chg-first_coll_y,
+                    diff = ifelse(class == "abrupt", diff, NA)
+      ) %>%
+      dplyr::filter(class=="abrupt") %>%
+      tidyr::drop_na(diff) %>%
+      ggplot()+
+      geom_histogram(aes(x=diff, fill=trend), col="grey30", binwidth = 2.5, boundary=0)+
+      geom_vline(xintercept = 0, lty="dotted")+
+      scale_fill_manual(values =
+                          c("decrease"="#660000", "increase"="#000066"))+
 
-     labs(x="year since collapse", y="number of stocks")+
-     facet_wrap(vars(traj), nrow = 2)+
-     theme_bw()+
-     scale_y_continuous(expand=c(0,0))+
-     expand_limits(y=c(0,4))+
-     scale_x_continuous(breaks = seq(-50, 50, 5))+
-     theme(strip.text = element_text(colour = "black"))+
-     guides(fill="none")+
-     labs(tag="C")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           # panel.grid.major.y = element_blank(),
-           panel.grid.minor.y = element_blank(),
-           strip.text = element_text(size=15),
-           plot.tag=element_text(size=20, face="bold")))
+      labs(x="year since collapse", y="number of stocks")+
+      facet_wrap(vars(traj), nrow = 2)+
+      theme_bw()+
+      scale_y_continuous(expand=c(0,0))+
+      expand_limits(y=c(0,4))+
+      scale_x_continuous(breaks = seq(-50, 50, 5))+
+      theme(strip.text = element_text(colour = "black"))+
+      guides(fill="none")+
+      labs(tag="C")+
+      theme(axis.text = element_text(size=12),
+            axis.title = element_text(size=15),
+            # panel.grid.major.y = element_blank(),
+            panel.grid.minor.y = element_blank(),
+            strip.text = element_text(size=15),
+            plot.tag=element_text(size=20, face="bold")))
 
 
 
@@ -1219,36 +1221,36 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
   (nPAS_warm <- prop_warm_plot(traj_SProd, main_lme, asstchange_LME,
                                expression(class=="abrupt" & trend=="decrease"),
                                weight="", 1)+
-     labs(y="Proportion of negative PAS",
-          tag="D")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           axis.title.x = element_text(size=13),
-           plot.tag=element_text(size=20, face="bold")))
+      labs(y="Proportion of negative PAS",
+           tag="D")+
+      theme(axis.text = element_text(size=12),
+            axis.title = element_text(size=15),
+            axis.title.x = element_text(size=13),
+            plot.tag=element_text(size=20, face="bold")))
 
 
   # Correlation positive PAS vs. warming ---
   (pPAS_warm <- prop_warm_plot(traj_SProd, main_lme, asstchange_LME,
                                expression(class=="abrupt" & trend=="increase"),
                                weight="", 1)+
-     labs(y="Proportion of positive PAS",
-          tag="E")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           axis.title.x = element_text(size=13),
-           plot.tag=element_text(size=20, face="bold")))
+      labs(y="Proportion of positive PAS",
+           tag="E")+
+      theme(axis.text = element_text(size=12),
+            axis.title = element_text(size=15),
+            axis.title.x = element_text(size=13),
+            plot.tag=element_text(size=20, face="bold")))
 
   # Correlation collapse vs. warming ---
 
   (coll_warm <- prop_warm_plot(coll, main_lme, asstchange_LME,
                                expression(did_collapse=="Yes"),
                                weight="", 1)+
-     labs(y="Proportion of collapses",
-          tag="F")+
-     theme(axis.text = element_text(size=12),
-           axis.title = element_text(size=15),
-           axis.title.x = element_text(size=13),
-           plot.tag=element_text(size=20, face="bold")))
+      labs(y="Proportion of collapses",
+           tag="F")+
+      theme(axis.text = element_text(size=12),
+            axis.title = element_text(size=15),
+            axis.title.x = element_text(size=13),
+            plot.tag=element_text(size=20, face="bold")))
 
   comp_fig <- (prop_coll_shift + abr_coll_shift + time_coll_shift) /
     (nPAS_warm + pPAS_warm + coll_warm)
