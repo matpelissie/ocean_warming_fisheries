@@ -8,8 +8,8 @@
 
 # Load packages, functions, and data --------------------------------------
 source("00_Rpackages.R")
-source("R/functions_classification.R")
-source("R/functions_analyses.R")
+source("R/fun01_classification.R")
+source("R/fun02_analyses.R")
 
 # Load RAMLDB v4.61:
 load("data/RAMLDB v4.61/R Data/DBdata[asmt][v4.61].RData")
@@ -297,10 +297,10 @@ centroid_lme <- tibble::tibble(x=centroids$lon,
                     by = "area")
 
 space_lme <- ggplot(lmes)+
-    geom_sf()+
-    theme_void()+
-    ggimage::geom_subview(aes(x=x, y=y, subview=sunburst,
-                              width=width, height=width), data=centroid_lme)
+  geom_sf()+
+  theme_void()+
+  ggimage::geom_subview(aes(x=x, y=y, subview=sunburst,
+                            width=width, height=width), data=centroid_lme)
 
 pdf(file = "res/figs/supp/fig_s2/fig_s2_lmes.pdf",
     width=12, height=9)
@@ -329,20 +329,20 @@ sp_RAM <- timeseries_values_views %>%
   dplyr::summarise(ram_stk=n())
 
 traj_RAM <- traj_SProd %>%
-    dplyr::mutate(traj_simpl = dplyr::case_when(
-      traj %in% c("stable_constant", "stable_convex", "stable_concave") ~ "stable",
-      traj %in% c("increase_constant", "increase_decelerated", "increase_accelerated") ~ "increase gradual",
-      traj == "1_breakpoint" & trend=="increase" ~ "positive PAS",
-      traj %in% c("decrease_constant", "decrease_decelerated") ~ "decrease gradual",
-      traj == "1_breakpoint" & trend=="decrease" ~ "negative PAS"),
-      traj_simpl = factor(traj_simpl,
-                          levels=c("stable", "increase gradual", "positive PAS",
-                                   "decrease gradual", "negative PAS"))) %>%
-    dplyr::group_by(traj_simpl, ordername) %>%
-    dplyr::summarise(stk_traj=n()) %>%
-    dplyr::group_by(ordername) %>%
-    dplyr::mutate(n_tot = sum(stk_traj)) %>%
-    dplyr::right_join(sp_RAM, by="ordername")
+  dplyr::mutate(traj_simpl = dplyr::case_when(
+    traj %in% c("stable_constant", "stable_convex", "stable_concave") ~ "stable",
+    traj %in% c("increase_constant", "increase_decelerated", "increase_accelerated") ~ "increase gradual",
+    traj == "1_breakpoint" & trend=="increase" ~ "positive PAS",
+    traj %in% c("decrease_constant", "decrease_decelerated") ~ "decrease gradual",
+    traj == "1_breakpoint" & trend=="decrease" ~ "negative PAS"),
+    traj_simpl = factor(traj_simpl,
+                        levels=c("stable", "increase gradual", "positive PAS",
+                                 "decrease gradual", "negative PAS"))) %>%
+  dplyr::group_by(traj_simpl, ordername) %>%
+  dplyr::summarise(stk_traj=n()) %>%
+  dplyr::group_by(ordername) %>%
+  dplyr::mutate(n_tot = sum(stk_traj)) %>%
+  dplyr::right_join(sp_RAM, by="ordername")
 
 (p_ram_traj <- ggplot(traj_RAM)+
     geom_col(aes(x=reorder(ordername, ram_stk), y=ram_stk), fill="grey",
@@ -372,44 +372,44 @@ area <- readr::read_csv("data/FAO_data/Capture_2024.1.0/CL_FI_WATERAREA_GROUPS.c
 taxo <- readr::read_delim("data/FAO_data/ASFIS_sp/ASFIS_sp_2023.txt")
 
 FAOcatch_fish <- fish_file %>%
-    dplyr::left_join(species %>%
-                       dplyr::select(`3A_Code`, Scientific_Name,
-                                     ISSCAAP_Group_En, Major_Group),
-                     by=c("SPECIES.ALPHA_3_CODE"="3A_Code")) %>%
-    dplyr::left_join(area %>%
-                       dplyr::select(Code, Name_En) %>%
-                       dplyr::rename(area=Name_En),
-                     by=c("AREA.CODE"="Code")) %>%
-    dplyr::filter(!grepl("Inland", area) & Major_Group=="PISCES") %>%
-    dplyr::group_by(ISSCAAP_Group_En, Scientific_Name, SPECIES.ALPHA_3_CODE) %>%
-    dplyr::summarise(catch = sum(VALUE)) %>%
-    dplyr::arrange(dplyr::desc(catch)) %>%
-    dplyr::left_join(taxo %>%
-                       dplyr::mutate(Order =
-                                       ifelse(Family %in%
-                                                c("OSMERIDAE", "PLECOGLOSSIDAE",
-                                                  "RETROPINNIDAE", "SALANGIDAE"),
-                                              "Osmeriformes", Order)) %>%
-                       dplyr::select(Alpha3_Code, Order),
-                     by=c("SPECIES.ALPHA_3_CODE" = "Alpha3_Code")) %>%
-    dplyr::mutate(Order = stringr::str_to_title(Order),
-                  Order = dplyr::recode(Order,
-                                        Scombroidei = "Perciformes",
-                                        Percoidei = "Perciformes",
-                                        Gobioidei = "Perciformes",
-                                        Zoarcoidei = "Perciformes",
-                                        "Stromateoidei, Anabantoidei" = "Perciformes",
-                                        "Other Perciformes" = "Perciformes",
-                                        Trachinoidei = "Trachiniformes",
-                                        Acanthuroidei = "Acanthuriformes",
-                                        .default = Order)) %>%
-    dplyr::filter(Order != "Pisces Miscellanea") %>%
-    dplyr::group_by(Order) %>%
-    dplyr::summarise(totcatch = sum(catch)) %>%
-    dplyr::rename(ordername = Order) %>%
-    dplyr::filter(ordername %in% sp_RAM$ordername) %>%
-    arrange(totcatch) %>%
-    dplyr::right_join(sp_RAM, by="ordername")
+  dplyr::left_join(species %>%
+                     dplyr::select(`3A_Code`, Scientific_Name,
+                                   ISSCAAP_Group_En, Major_Group),
+                   by=c("SPECIES.ALPHA_3_CODE"="3A_Code")) %>%
+  dplyr::left_join(area %>%
+                     dplyr::select(Code, Name_En) %>%
+                     dplyr::rename(area=Name_En),
+                   by=c("AREA.CODE"="Code")) %>%
+  dplyr::filter(!grepl("Inland", area) & Major_Group=="PISCES") %>%
+  dplyr::group_by(ISSCAAP_Group_En, Scientific_Name, SPECIES.ALPHA_3_CODE) %>%
+  dplyr::summarise(catch = sum(VALUE)) %>%
+  dplyr::arrange(dplyr::desc(catch)) %>%
+  dplyr::left_join(taxo %>%
+                     dplyr::mutate(Order =
+                                     ifelse(Family %in%
+                                              c("OSMERIDAE", "PLECOGLOSSIDAE",
+                                                "RETROPINNIDAE", "SALANGIDAE"),
+                                            "Osmeriformes", Order)) %>%
+                     dplyr::select(Alpha3_Code, Order),
+                   by=c("SPECIES.ALPHA_3_CODE" = "Alpha3_Code")) %>%
+  dplyr::mutate(Order = stringr::str_to_title(Order),
+                Order = dplyr::recode(Order,
+                                      Scombroidei = "Perciformes",
+                                      Percoidei = "Perciformes",
+                                      Gobioidei = "Perciformes",
+                                      Zoarcoidei = "Perciformes",
+                                      "Stromateoidei, Anabantoidei" = "Perciformes",
+                                      "Other Perciformes" = "Perciformes",
+                                      Trachinoidei = "Trachiniformes",
+                                      Acanthuroidei = "Acanthuriformes",
+                                      .default = Order)) %>%
+  dplyr::filter(Order != "Pisces Miscellanea") %>%
+  dplyr::group_by(Order) %>%
+  dplyr::summarise(totcatch = sum(catch)) %>%
+  dplyr::rename(ordername = Order) %>%
+  dplyr::filter(ordername %in% sp_RAM$ordername) %>%
+  arrange(totcatch) %>%
+  dplyr::right_join(sp_RAM, by="ordername")
 
 (p_fao_catch <- ggplot(FAOcatch_fish)+
     geom_col(aes(x=reorder(ordername, ram_stk), y=totcatch/1000000),
@@ -434,10 +434,10 @@ dev.off()
 
 # Taxonomic order by trajectory (abrupt decrease, abrupt increase, nonabrupt)
 traj_SProd_sum_ord <- traj_SProd %>%
-dplyr::mutate(traj = dplyr::case_when(
-  traj == "1_breakpoint" & trend=="increase" ~ "positive PAS",
-  traj == "1_breakpoint" & trend=="decrease" ~ "negative PAS",
-  .default = "non abrupt")) %>%
+  dplyr::mutate(traj = dplyr::case_when(
+    traj == "1_breakpoint" & trend=="increase" ~ "positive PAS",
+    traj == "1_breakpoint" & trend=="decrease" ~ "negative PAS",
+    .default = "non abrupt")) %>%
   dplyr::group_by(traj, ordername) %>%
   dplyr::summarise(n=n()) %>%
   dplyr::ungroup()
@@ -468,7 +468,27 @@ chi_traj_ord$stdres %>%
 
 
 
-# Fig S4 - Trajectory overview classified on AICc only --------------------
+# Fig S4 - LME collapse proportions vs. warming (alternative definitions) ----
+
+dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
+
+# Collapse <10% maximum stock biomass
+bmax0.1 <- shift_coll_plot(traj_SProd, coll_def=c("bmax", 0.1), csec_coll = 2)
+
+# Collapse <15% average stock biomass
+bavg0.15 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.15), csec_coll = 2)
+
+# Collapse <50% average stock biomass
+bavg0.5 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.5), csec_coll = 2)
+
+fig_s4 <- bmax0.1[[2]][[3]] + bavg0.15[[2]][[3]] + bavg0.5[[2]][[3]] +
+  patchwork::plot_annotation(tag_levels = "A")
+
+ggsave("res/figs/supp/fig_s8/fig_s4_collsst.pdf", width=15, height=5, plot=fig_s4)
+
+
+
+# Fig S5 - Trajectory overview classified on AICc only --------------------
 
 traj_SProd_aicc <-
   readRDS("res/classif/classif_v4.61_SProd_minlen25_normTBavg_looFALSE_aicasd_start1950_AICconly.rds") %>%
@@ -486,7 +506,7 @@ traj_SProd_aicc <-
                      dplyr::select(stockid, primary_FAOarea),
                    by="stockid")
 
-dir.create("res/figs/supp/fig_s4", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s5", showWarnings=FALSE)
 
 ### a - Overall ---------------------------------------------------------
 
@@ -516,7 +536,7 @@ SProd_sunburst <- sunburst_traj_plot_det(traj_SProd_sum_det, size=4,
   labs(tag="A")+
   theme(plot.tag=element_text(size=20, face = "bold"))
 
-pdf(file = "res/figs/supp/fig_s3/fig_s3a.pdf",
+pdf(file = "res/figs/supp/fig_s5/fig_s5a.pdf",
     width=8, height=6)
 SProd_sunburst
 dev.off()
@@ -614,7 +634,7 @@ abr_events <- traj_SProd_aicc %>%
 abr_time <- abr_time_pos / abr_time_neg
 
 ggsave(plot = abr_time,
-       "res/figs/supp/fig_s3/fig_s3bc.pdf", width=5, height=5.625)
+       "res/figs/supp/fig_s5/fig_s5bc.pdf", width=5, height=5.625)
 
 
 ### d - Trajectories in space -------------------------------
@@ -727,7 +747,7 @@ space <- ggplot(areas %>%
   theme(plot.tag=element_text(size=20, face = "bold"))+
   labs(tag="D")
 
-pdf(file = "res/figs/supp/fig_s3/fig_3d.pdf",
+pdf(file = "res/figs/supp/fig_s5/fig_5d.pdf",
     width=12, height=9)
 space
 dev.off()
@@ -851,9 +871,9 @@ chi_traj_ord$stdres %>%
   dplyr::arrange(desc(abs(stdres)))
 
 
-# Fig S5 - Correlation matrices ----------------------------------------------
+# Fig S6 - Correlation matrices ----------------------------------------------
 
-dir.create("res/figs/supp/fig_s5", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s6", showWarnings=FALSE)
 
 col_fn <- function(data, mapping, method="p", use="pairwise", ...){
 
@@ -884,7 +904,7 @@ fishlife_multicorr <- GGally::ggpairs(
   lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
                combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
 
-pdf(file = "res/figs/supp/fig_s5/fig_s5a_fishlife.pdf",
+pdf(file = "res/figs/supp/fig_s6/fig_s6a_fishlife.pdf",
     width=8.75, height=8.75)
 fishlife_multicorr
 dev.off()
@@ -915,7 +935,7 @@ traits_multicorr_all <- GGally::ggpairs(
   lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
                combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
 
-pdf(file = "res/figs/supp/fig_s5/fig_s5b_alltraits.pdf",
+pdf(file = "res/figs/supp/fig_s6/fig_s6b_alltraits.pdf",
     width=10, height=10)
 traits_multicorr_all
 dev.off()
@@ -933,9 +953,60 @@ corrr::correlate(
 
 
 
-# Fig S6 - Explanatory factors of PAS (alternative models) ----------
+# Fig S7 - Abrupt shifts and alternative collapse definitions -------
 
-dir.create("res/figs/supp/fig_s6", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s7", showWarnings=FALSE)
+
+fig_s7 <- bmax0.1[[1]] / bavg0.15[[1]] / bavg0.5[[1]] +
+  patchwork::plot_annotation(tag_levels = "A")
+
+ggsave(filename="res/figs/supp/fig_s7/fig_s7_coll.pdf", width=14, height=12, plot=fig_s7)
+
+## Statistical tests ----------------------------------------------------
+
+# Collapse <10% maximum stock biomass
+coll_bmax0.1 <- add_collapsed(traj_SProd, coll_def=c("bmax", 0.1), csec_coll=2)
+(t_dec_bmax0.1 <-
+    t.test(coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
+                          coll_bmax0.1$did_collapse=="Yes",]$mag,
+           coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
+                          coll_bmax0.1$did_collapse=="No",]$mag))
+# p-value = 0.0225
+
+# Collapse <15% average stock biomass
+coll_bavg0.15 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.15), csec_coll=2)
+(t_dec_bavg0.15 <-
+    t.test(coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
+                           coll_bavg0.15$did_collapse=="Yes",]$mag,
+           coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
+                           coll_bavg0.15$did_collapse=="No",]$mag))
+# p-value = 0.062
+
+# Collapse <50% average stock biomass
+coll_bavg0.5 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.5), csec_coll=2)
+(t_dec_bavg0.5 <-
+    t.test(coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
+                          coll_bavg0.5$did_collapse=="Yes",]$mag,
+           coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
+                          coll_bavg0.5$did_collapse=="No",]$mag))
+# p-value = 0.2347
+
+(t_inc_bavg0.5 <-
+    t.test(coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
+                          coll_bavg0.5$did_collapse=="Yes",]$mag,
+           coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
+                          coll_bavg0.5$did_collapse=="No",]$mag))
+# p-value = 0.8263
+
+
+
+
+
+
+
+# Fig S8 - Explanatory factors of PAS (alternative models) ----------
+
+dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
 
 ## Classification with AICc only ----------------------------------------
 
@@ -1001,7 +1072,7 @@ table(df_scl_aicc$shift_dec)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s6/fig_s6a_decaicc.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8a_decaicc.pdf",
     width=6, height=4)
 m_dec_aicc
 dev.off()
@@ -1035,7 +1106,7 @@ table(df_scl_aicc$shift_inc)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s6/fig_s6b_incaicc.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8b_incaicc.pdf",
     width=6, height=4)
 m_inc_aicc
 dev.off()
@@ -1102,7 +1173,7 @@ table(df_scl_Umsy$shift_dec)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s6/fig_s6c_decUmsy.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8c_decUmsy.pdf",
     width=6, height=4)
 m_dec_Umsy
 dev.off()
@@ -1146,75 +1217,7 @@ table(df_scl_Umsy$shift_inc)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s6/fig_s6d_incUmsy.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8d_incUmsy.pdf",
     width=6, height=4)
 m_inc_Umsy
 dev.off()
-
-
-
-# Fig S7 - Abrupt shifts and alternative collapse definitions -------
-
-dir.create("res/figs/supp/fig_s7", showWarnings=FALSE)
-
-# Collapse <10% maximum stock biomass
-bmax0.1 <- shift_coll_plot(traj_SProd, coll_def=c("bmax", 0.1), csec_coll = 2)
-
-# Collapse <15% average stock biomass
-bavg0.15 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.15), csec_coll = 2)
-
-# Collapse <50% average stock biomass
-bavg0.5 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.5), csec_coll = 2)
-
-fig_s7 <- bmax0.1[[1]] / bavg0.15[[1]] / bavg0.5[[1]] +
-  patchwork::plot_annotation(tag_levels = "A")
-
-ggsave(filename="res/figs/supp/fig_s7/fig_s7_coll.pdf", width=14, height=12, plot=fig_s7)
-
-## Statistical tests ----------------------------------------------------
-
-# Collapse <10% maximum stock biomass
-coll_bmax0.1 <- add_collapsed(traj_SProd, coll_def=c("bmax", 0.1), csec_coll=2)
-(t_dec_bmax0.1 <-
-   t.test(coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
-                         coll_bmax0.1$did_collapse=="Yes",]$mag,
-          coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
-                         coll_bmax0.1$did_collapse=="No",]$mag))
-# p-value = 0.0225
-
-# Collapse <15% average stock biomass
-coll_bavg0.15 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.15), csec_coll=2)
-(t_dec_bavg0.15 <-
-    t.test(coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
-                           coll_bavg0.15$did_collapse=="Yes",]$mag,
-           coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
-                           coll_bavg0.15$did_collapse=="No",]$mag))
-# p-value = 0.062
-
-# Collapse <50% average stock biomass
-coll_bavg0.5 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.5), csec_coll=2)
-(t_dec_bavg0.5 <-
-    t.test(coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
-                          coll_bavg0.5$did_collapse=="Yes",]$mag,
-           coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
-                          coll_bavg0.5$did_collapse=="No",]$mag))
-# p-value = 0.2347
-
-(t_inc_bavg0.5 <-
-    t.test(coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
-                          coll_bavg0.5$did_collapse=="Yes",]$mag,
-           coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
-                          coll_bavg0.5$did_collapse=="No",]$mag))
-# p-value = 0.8263
-
-
-
-# Fig S8 - LME collapse proportions vs. warming (alternative definitions) ----
-
-dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
-
-fig_s8 <- bmax0.1[[2]][[3]] + bavg0.15[[2]][[3]] + bavg0.5[[2]][[3]] +
-  patchwork::plot_annotation(tag_levels = "A")
-
-ggsave("res/figs/supp/fig_s8/fig_s8_collsst.pdf", width=15, height=5, plot=fig_s8)
-
