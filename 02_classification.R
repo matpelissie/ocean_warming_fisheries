@@ -8,8 +8,8 @@
 
 # Load packages, functions, and data --------------------------------------
 source("00_Rpackages.R")
-source("R/functions_classification.R")
-source("R/functions_analyses.R")
+source("R/fun01_classification.R")
+source("R/fun02_analyses.R")
 
 # Load RAMLDB v4.61:
 load("data/RAMLDB v4.61/R Data/DBdata[asmt][v4.61].RData")
