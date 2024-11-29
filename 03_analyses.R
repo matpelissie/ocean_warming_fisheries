@@ -8,8 +8,8 @@
 
 # Load packages, functions, and data --------------------------------------
 source("00_Rpackages.R")
-source("R/functions_classification.R")
-source("R/functions_analyses.R")
+source("R/fun01_classification.R")
+source("R/fun02_analyses.R")
 
 # Load RAMLDB v4.61:
 load("data/RAMLDB v4.61/R Data/DBdata[asmt][v4.61].RData")
@@ -531,9 +531,18 @@ ggsave(filename="res/figs/fig4/fig4_bavg0.25_cseccoll2.pdf",
 ### Statistical tests ----------------------------------------------------
 
 # Magnitude of abrupt declines
+coll <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=2)
+
 (t_dec <-
-   t.test(coll[coll$traj=="decrease abrupt" & coll$did_collapse=="Yes",]$mag,
-          coll[coll$traj=="decrease abrupt" & coll$did_collapse=="No",]$mag))
+    t.test(coll[coll$traj=="decrease abrupt" & coll$did_collapse=="Yes",]$mag,
+           coll[coll$traj=="decrease abrupt" & coll$did_collapse=="No",]$mag))
+# p-value = 0.05855
 
 # Test for abrupt increase magnitude not possible since only one stock collapsed
+
+# Stocks with abrupt decrease followed by collapse
+coll %>% dplyr::filter(traj=="decrease abrupt" & did_collapse=="Yes") %>%
+  dplyr::mutate(diff = loc_brk_chg-first_coll_y) %>%
+  dplyr::arrange(diff)
+
 
