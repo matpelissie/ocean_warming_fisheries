@@ -1360,11 +1360,12 @@ best_traj_aic <- function(res, str,
 
     best_traj <- best_traj %>%
       dplyr::mutate(loc_brk_asd_sep = strsplit(loc_brk_asd, ";")) %>%
-      tidyr::unnest(loc_brk_asd_sep) %>%
+      tidyr::unnest(loc_brk_asd_sep) %>% # add a row for each asdetect breakpoint
       dplyr::mutate(loc_brk_asd_sep = as.numeric(loc_brk_asd_sep),
                     loc_brk_chg = as.numeric(loc_brk_chg)) %>%
       dplyr::group_by(simu_id) %>%
       dplyr::mutate(row = row_number()) %>%
+      # Add duplicate columns with asd breakpoints to compute delay from chngpt
       tidyr::pivot_wider(names_from=row, names_prefix="loc_brk_asd_",
                          values_from=loc_brk_asd_sep) %>%
       dplyr::mutate(dplyr::across(.cols = dplyr::contains('loc_brk_asd_'),
@@ -1374,17 +1375,16 @@ best_traj_aic <- function(res, str,
       dplyr::mutate(dplyr::across(.cols = dplyr::contains("diff_loc_"),
                                   ~abs(loc_brk_chg-.x))) %>%
       dplyr::rowwise() %>%
-      dplyr::mutate(loc_brk_asd = as.numeric(loc_brk_asd),
-                    diff_loc_min = min(dplyr::c_across(
-                      dplyr::contains("diff_loc_")), na.rm=TRUE),
-                    loc_brk_asd_min = min(dplyr::c_across(
-                      dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
-                    loc_brk_asd_max = max(dplyr::c_across(
-                      dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
-                    dplyr::across(.cols = dplyr::contains("loc"),
-                                  ~ dplyr::na_if(., Inf)),
-                    loc_brk_asd = as.character(loc_brk_asd)) %>%
-      suppressWarnings()
+      dplyr::mutate(
+        diff_loc_min = min(dplyr::c_across(
+          dplyr::contains("diff_loc_")), na.rm=TRUE),
+        loc_brk_asd_min = min(dplyr::c_across(
+          dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
+        loc_brk_asd_max = max(dplyr::c_across(
+          dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
+        dplyr::across(.cols = dplyr::contains(
+          c("loc_brk_asd_", "diff_loc_")),
+          ~ dplyr::na_if(., Inf)))
   }
 
   # Expand in length to select by AICc below:
