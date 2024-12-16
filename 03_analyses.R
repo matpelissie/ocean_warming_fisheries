@@ -56,6 +56,8 @@ st_examples <-
 
 for (i in 1:length(st_examples)){
 
+  print(paste0("Classification in progress for ", st_examples[i]))
+
   set <- extract_RAM(st_examples[i], "SProd") %>%
     prep_data_simpl()
 
@@ -115,106 +117,10 @@ SProd_sunburst <- sunburst_traj_plot_det(traj_SProd_sum_det, size=4,
 
 pdf(file = "res/figs/fig2/fig2a.pdf",
     width=8, height=6)
-SProd_sunburst
+print(SProd_sunburst)
 dev.off()
 
-### 2bc - Abrupt shifts in time -------------------------------
-
-ts_avail_distr <- timeseries_values_views %>%
-  dplyr::filter(stockid %in% (traj_SProd %>% dplyr::pull(stockid)),
-                year>=1950) %>%
-  dplyr::select(stockid, year, SProd) %>%
-  tidyr::drop_na() %>%
-  dplyr::group_by(year) %>%
-  dplyr::summarise(n=n())
-
-ts_avail_distr2 <-
-  ts_avail_distr[rep(seq_along(ts_avail_distr$n), ts_avail_distr$n), ]
-
-abr_events <- traj_SProd %>%
-  dplyr::filter(class=="abrupt")
-
-(abr_time_pos <-
-    ggplot(ts_avail_distr2)+
-    geom_histogram(aes(x=year, y=after_stat(count)), binwidth=1,
-                   fill="grey70", alpha=0.5, col=NA)+
-    geom_density(data = abr_events %>%
-                   dplyr::rename(year=loc_brk_chg) %>%
-                   dplyr::filter(trend=="increase"),
-                 aes(x=year, y=100*after_stat(count)),
-                 adjust=1, fill="#000066", alpha=0.3, col=NA)+
-    geom_histogram(data = abr_events %>%
-                     dplyr::rename(year=loc_brk_chg) %>%
-                     dplyr::filter(trend=="increase"),
-                   aes(x=year, y=50*after_stat(count)),
-                   binwidth=1, fill="#000066", alpha=0.7, col=NA)+
-
-    scale_y_continuous(
-      name = "Time series coverage",
-      sec.axis = sec_axis(transform=~./50,
-                          name="Abrupt increases"),
-      position = "right",
-      breaks = seq(0, 300, 100),
-      expand = c(0, 0))+
-    scale_x_continuous(breaks = seq(1950, 2020, 10),
-                       expand = c(0, 0))+
-    theme_classic()+
-    theme(legend.position="none",
-          axis.text=element_text(size=10),
-          axis.text.x=element_text(vjust=0),
-          axis.title=element_text(size=15),
-          axis.title.y.left=element_text(colour = "#2a2ab1ff"),
-          axis.title.y.right=element_text(colour = "grey50"),
-          axis.ticks=element_line(linewidth=.7),
-          axis.ticks.length=unit(2, "mm"),
-          plot.tag=element_text(size=20, face = "bold"))+
-    coord_cartesian(xlim=c(1950, 2020))+
-    labs(x="", tag="B"))
-
-
-(abr_time_neg <-
-    ggplot(ts_avail_distr2)+
-    geom_histogram(aes(x=year, y=after_stat(count)), binwidth=1,
-                   fill="grey70", alpha=0.5, col=NA)+
-    geom_density(data = abr_events %>%
-                   dplyr::rename(year=loc_brk_chg) %>%
-                   dplyr::filter(trend=="decrease"),
-                 aes(x=year, y=100*after_stat(count)),
-                 adjust=1, fill="#660000", alpha=0.3, col=NA)+
-    geom_histogram(data = abr_events %>%
-                     dplyr::rename(year=loc_brk_chg) %>%
-                     dplyr::filter(trend=="decrease"),
-                   aes(x=year, y=50*after_stat(count)),
-                   binwidth=1, fill="#660000", alpha=0.7, col=NA)+
-    scale_y_continuous(
-      name = "Time series coverage",
-      sec.axis = sec_axis(transform=~./50,
-                          name="Abrupt declines"),
-      position = "right",
-      breaks = seq(0, 300, 100),
-      expand = c(0, 0))+
-    scale_x_continuous(breaks = seq(1950, 2020, 10),
-                       expand = c(0, 0))+
-    theme_classic()+
-    theme(legend.position="none",
-          axis.text=element_text(size=10),
-          axis.text.x=element_text(vjust=0),
-          axis.title=element_text(size=15),
-          axis.title.y.left=element_text(colour = "#ae2727ff"),
-          axis.title.y.right=element_text(colour = "grey50"),
-          axis.ticks=element_line(linewidth=.7),
-          axis.ticks.length=unit(2, "mm"),
-          plot.tag=element_text(size=20, face = "bold"))+
-    coord_cartesian(xlim=c(1950, 2020))+
-    labs(x="", tag="C"))
-
-abr_time <- abr_time_pos / abr_time_neg
-
-ggsave(plot = abr_time,
-       "res/figs/fig2/fig2bc.pdf", width=5, height=5.625)
-
-
-### 2d - Trajectories in space -------------------------------
+### 2b - Trajectories in space -------------------------------
 areas <-
   sf::read_sf("data/spatial_data/FAO_AREAS_ERASE_LOWRES/FAO_AREAS_ERASE_LOWRES.shp")
 
@@ -325,10 +231,106 @@ space <- ggplot(areas %>%
   theme(plot.tag=element_text(size=20, face = "bold"))+
   labs(tag="D")
 
-pdf(file = "res/figs/fig2/fig2d.pdf",
+pdf(file = "res/figs/fig2/fig2b.pdf",
     width=12, height=9)
-space
+print(space)
 dev.off()
+
+
+### 2cd - Abrupt shifts in time -------------------------------
+
+ts_avail_distr <- timeseries_values_views %>%
+  dplyr::filter(stockid %in% (traj_SProd %>% dplyr::pull(stockid)),
+                year>=1950) %>%
+  dplyr::select(stockid, year, SProd) %>%
+  tidyr::drop_na() %>%
+  dplyr::group_by(year) %>%
+  dplyr::summarise(n=n())
+
+ts_avail_distr2 <-
+  ts_avail_distr[rep(seq_along(ts_avail_distr$n), ts_avail_distr$n), ]
+
+abr_events <- traj_SProd %>%
+  dplyr::filter(class=="abrupt")
+
+(abr_time_pos <-
+    ggplot(ts_avail_distr2)+
+    geom_histogram(aes(x=year, y=after_stat(count)), binwidth=1,
+                   fill="grey70", alpha=0.5, col=NA)+
+    geom_density(data = abr_events %>%
+                   dplyr::rename(year=loc_brk_chg) %>%
+                   dplyr::filter(trend=="increase"),
+                 aes(x=year, y=100*after_stat(count)),
+                 adjust=1, fill="#000066", alpha=0.3, col=NA)+
+    geom_histogram(data = abr_events %>%
+                     dplyr::rename(year=loc_brk_chg) %>%
+                     dplyr::filter(trend=="increase"),
+                   aes(x=year, y=50*after_stat(count)),
+                   binwidth=1, fill="#000066", alpha=0.7, col=NA)+
+
+    scale_y_continuous(
+      name = "Time series coverage",
+      sec.axis = sec_axis(transform=~./50,
+                          name="Abrupt increases"),
+      position = "right",
+      breaks = seq(0, 300, 100),
+      expand = c(0, 0))+
+    scale_x_continuous(breaks = seq(1950, 2020, 10),
+                       expand = c(0, 0))+
+    theme_classic()+
+    theme(legend.position="none",
+          axis.text=element_text(size=10),
+          axis.text.x=element_text(vjust=0),
+          axis.title=element_text(size=15),
+          axis.title.y.left=element_text(colour = "#2a2ab1ff"),
+          axis.title.y.right=element_text(colour = "grey50"),
+          axis.ticks=element_line(linewidth=.7),
+          axis.ticks.length=unit(2, "mm"),
+          plot.tag=element_text(size=20, face = "bold"))+
+    coord_cartesian(xlim=c(1950, 2020))+
+    labs(x="", tag="B"))
+
+
+(abr_time_neg <-
+    ggplot(ts_avail_distr2)+
+    geom_histogram(aes(x=year, y=after_stat(count)), binwidth=1,
+                   fill="grey70", alpha=0.5, col=NA)+
+    geom_density(data = abr_events %>%
+                   dplyr::rename(year=loc_brk_chg) %>%
+                   dplyr::filter(trend=="decrease"),
+                 aes(x=year, y=100*after_stat(count)),
+                 adjust=1, fill="#660000", alpha=0.3, col=NA)+
+    geom_histogram(data = abr_events %>%
+                     dplyr::rename(year=loc_brk_chg) %>%
+                     dplyr::filter(trend=="decrease"),
+                   aes(x=year, y=50*after_stat(count)),
+                   binwidth=1, fill="#660000", alpha=0.7, col=NA)+
+    scale_y_continuous(
+      name = "Time series coverage",
+      sec.axis = sec_axis(transform=~./50,
+                          name="Abrupt declines"),
+      position = "right",
+      breaks = seq(0, 300, 100),
+      expand = c(0, 0))+
+    scale_x_continuous(breaks = seq(1950, 2020, 10),
+                       expand = c(0, 0))+
+    theme_classic()+
+    theme(legend.position="none",
+          axis.text=element_text(size=10),
+          axis.text.x=element_text(vjust=0),
+          axis.title=element_text(size=15),
+          axis.title.y.left=element_text(colour = "#ae2727ff"),
+          axis.title.y.right=element_text(colour = "grey50"),
+          axis.ticks=element_line(linewidth=.7),
+          axis.ticks.length=unit(2, "mm"),
+          plot.tag=element_text(size=20, face = "bold"))+
+    coord_cartesian(xlim=c(1950, 2020))+
+    labs(x="", tag="C"))
+
+abr_time <- abr_time_pos / abr_time_neg
+
+ggsave(plot = abr_time,
+       "res/figs/fig2/fig2cd.pdf", width=5, height=5.625)
 
 # => Panels assembled with Inkscape to arrange the legends
 
@@ -474,7 +476,7 @@ table(df_scl$shift_dec)
 
 pdf(file = "res/figs/fig3/fig3a_dec.pdf",
     width=6, height=4)
-m_dec
+print(m_dec)
 dev.off()
 
 
@@ -508,7 +510,7 @@ table(df_scl$shift_inc)
 
 pdf(file = "res/figs/fig3/fig3b_inc.pdf",
     width=6, height=4)
-m_inc
+print(m_inc)
 dev.off()
 
 
