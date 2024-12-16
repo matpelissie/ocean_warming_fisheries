@@ -87,6 +87,7 @@ dir1 <- paste0("res/classif/SProd_RAMLDBv4.61_minlen",
 dir.create(dir1, showWarnings=FALSE)
 
 # Run the classification:
+print("Begin productivity time series classification (with asdetect)")
 classif_SProd <-
   run_classif_data(
     df_list=list_SProd_norm, min_len=len,
@@ -114,6 +115,7 @@ dir2 <- paste0("res/classif/SProd_RAMLDBv4.61_minlen",
 dir.create(dir2, showWarnings=FALSE)
 
 # Run the classification:
+print("Begin productivity time series classification (without asdetect)")
 classif_SProd <-
   run_classif_data(
     df_list=list_SProd_norm, min_len=len,
