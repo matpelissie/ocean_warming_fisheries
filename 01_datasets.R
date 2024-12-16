@@ -63,11 +63,13 @@ unlink("data/raw_data/ASFIS_sp.zip")
 
 ### Download LME polygons -------------------------------
 
-download.file("http://geonode.iwlearn.org/geoserver/wfs?format_options=charset%3AUTF-8&typename=geonode%3Almes66gcd&outputFormat=SHAPE-ZIP&version=1.0.0&service=WFS&request=GetFeature&access_token=689743d98d5611ef9567000d3ab6a624",
-              destfile = "data/raw_data/LME66.zip")
-unzip("data/raw_data/LME66.zip",
-      exdir = "data/spatial_data/LME66")
-unlink("data/raw_data/LME66.zip")
+# The following download chunk is failing at the moment
+# so the shape file is directly provided in the repository
+# download.file("http://geonode.iwlearn.org/geoserver/wfs?format_options=charset%3AUTF-8&typename=geonode%3Almes66gcd&outputFormat=SHAPE-ZIP&version=1.0.0&service=WFS&request=GetFeature&access_token=689743d98d5611ef9567000d3ab6a624",
+#               destfile = "data/raw_data/LME66.zip")
+# unzip("data/raw_data/LME66.zip",
+#       exdir = "data/spatial_data/LME66")
+# unlink("data/raw_data/LME66.zip")
 
 
 ### Global oceans polygons already downloaded (after manual request) -------
@@ -277,7 +279,7 @@ frac_lme <- lapply(1:length(stocks), function(i){
     dplyr::select(stockid, LME_NUMBER, LME_NAME, prop_area) %>%
     dplyr::arrange(desc(prop_area))
 
-  print(i)
+  print(paste0(i, "/", length(stocks)))
 
   return(frac_simpl)
 
@@ -402,22 +404,12 @@ sst.monthly.df <- data.frame(
 mtemp <- sst.monthly.df %>%
   tidyr::pivot_longer(cols=-c(assessid, stockid),
                       names_to="date", values_to="sst_c") %>%
-  dplyr::mutate(date = as.POSIXct(strptime(date, format="%Y.%m.%d")),
+  dplyr::mutate(date = gsub("a", "", date),
+                date = as.POSIXct(strptime(date, format="%Y.%m.%d")),
                 year = as.numeric(format(date, "%Y")),
                 month = as.numeric(format(date, "%m"))) %>%
-  dplyr::select(assessid, stockid, year, month, date, season, sst_c) %>%
+  dplyr::select(assessid, stockid, year, month, date, sst_c) %>%
   dplyr::arrange(stockid, date)
-
-# # Convert date to actual date
-# mtemp$date <- gsub("a", "", mtemp$date)
-# mtemp$date <- as.POSIXct(strptime(mtemp$date, format="%Y.%m.%d"))
-# mtemp$year <- as.numeric(format(mtemp$date, "%Y"))
-# mtemp$month <- as.numeric(format(mtemp$date, "%m"))
-#
-# # Rearrange columns
-# mtemp <- mtemp %>%
-#   dplyr::select(assessid, stockid, year, month, date, sst_c) %>%
-#   dplyr::arrange(stockid, date)
 
 # Calculate mean annual SST by stock boundary
 atemp <- mtemp %>%
@@ -477,7 +469,6 @@ stemp.lme <- atemp.lme %>%
 
 readr::write_csv(atemp.lme,
                  "data/spatial_data/lme_yearly_had_sst.csv")
-
 
 
 # Remove unused raw data left
