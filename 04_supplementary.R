@@ -110,6 +110,8 @@ rand_dec <- hier.part::rand.hp(df$shift_dec, env, fam = "binomial",
                                link="logit", gof = "logLik",
                                num.reps = 999)$Iprobs
 
+print("Randomizations for hierarchical partioning (abrupt declines) done.")
+
 hier.part_dec <- dplyr::bind_cols(rand_dec, part_dec$IJ) %>%
   tibble::rownames_to_column(var="variable")
 
@@ -127,6 +129,8 @@ set.seed(1)
 rand_inc <- hier.part::rand.hp(df$shift_inc, env, fam = "binomial",
                                link="logit", gof = "logLik",
                                num.reps = 999)$Iprobs
+
+print("Randomizations for hierarchical partioning (abrupt increases) done.")
 
 hier.part_inc <- dplyr::bind_cols(rand_inc, part_inc$IJ) %>%
   tibble::rownames_to_column(var="variable")
@@ -226,7 +230,7 @@ traj_SProd_nrmse_simple <- traj_SProd %>%
 
 pdf(file = "res/figs/supp/fig_s1.pdf",
     width=15, height=5)
-traj_SProd_waicc_simple + traj_SProd_loo_simple + traj_SProd_nrmse_simple
+print(traj_SProd_waicc_simple + traj_SProd_loo_simple + traj_SProd_nrmse_simple)
 dev.off()
 
 
@@ -304,7 +308,7 @@ space_lme <- ggplot(lmes)+
 
 pdf(file = "res/figs/supp/fig_s2/fig_s2_lmes.pdf",
     width=12, height=9)
-space_lme
+print(space_lme)
 dev.off()
 
 
@@ -369,7 +373,7 @@ traj_RAM <- traj_SProd %>%
 fish_file <- readr::read_csv("data/FAO_data/Capture_2024.1.0/Capture_Quantity.csv")
 species <- readr::read_csv("data/FAO_data/Capture_2024.1.0/CL_FI_SPECIES_GROUPS.csv")
 area <- readr::read_csv("data/FAO_data/Capture_2024.1.0/CL_FI_WATERAREA_GROUPS.csv")
-taxo <- readr::read_delim("data/FAO_data/ASFIS_sp/ASFIS_sp_2023.txt")
+taxo <- readr::read_csv("data/FAO_data/ASFIS_sp/ASFIS_sp_2024.csv")
 
 FAOcatch_fish <- fish_file %>%
   dplyr::left_join(species %>%
@@ -389,7 +393,7 @@ FAOcatch_fish <- fish_file %>%
                                      ifelse(Family %in%
                                               c("OSMERIDAE", "PLECOGLOSSIDAE",
                                                 "RETROPINNIDAE", "SALANGIDAE"),
-                                            "Osmeriformes", Order)) %>%
+                                            "Osmeriformes", `Order or higher taxa`)) %>%
                      dplyr::select(Alpha3_Code, Order),
                    by=c("SPECIES.ALPHA_3_CODE" = "Alpha3_Code")) %>%
   dplyr::mutate(Order = stringr::str_to_title(Order),
@@ -470,7 +474,7 @@ chi_traj_ord$stdres %>%
 
 # Fig S4 - LME collapse proportions vs. warming (alternative definitions) ----
 
-dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s4", showWarnings=FALSE)
 
 # Collapse <10% maximum stock biomass
 bmax0.1 <- shift_coll_plot(traj_SProd, coll_def=c("bmax", 0.1), csec_coll = 2)
@@ -484,14 +488,14 @@ bavg0.5 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.5), csec_coll = 2)
 fig_s4 <- bmax0.1[[2]][[3]] + bavg0.15[[2]][[3]] + bavg0.5[[2]][[3]] +
   patchwork::plot_annotation(tag_levels = "A")
 
-ggsave("res/figs/supp/fig_s8/fig_s4_collsst.pdf", width=15, height=5, plot=fig_s4)
+ggsave("res/figs/supp/fig_s4/fig_s4_collsst.pdf", width=15, height=5, plot=fig_s4)
 
 
 
 # Fig S5 - Trajectory overview classified on AICc only --------------------
 
 traj_SProd_aicc <-
-  readRDS("res/classif/classif_v4.61_SProd_minlen25_normTBavg_looFALSE_aicasd_start1950_AICconly.rds") %>%
+  readRDS("res/classif/classif_v4.61_SProd_minlen25_normTBavg_looTRUE_aicasd_start1950_AICconly.rds") %>%
   `[[`("traj_ts_full") %>%
   dplyr::rename(stockid = simu_id) %>%
   dplyr::left_join(as.data.frame(stock) %>%
@@ -538,7 +542,7 @@ SProd_sunburst <- sunburst_traj_plot_det(traj_SProd_sum_det, size=4,
 
 pdf(file = "res/figs/supp/fig_s5/fig_s5a.pdf",
     width=8, height=6)
-SProd_sunburst
+print(SProd_sunburst)
 dev.off()
 
 ### bc - Abrupt shifts in time -------------------------------
@@ -749,7 +753,7 @@ space <- ggplot(areas %>%
 
 pdf(file = "res/figs/supp/fig_s5/fig_5d.pdf",
     width=12, height=9)
-space
+print(space)
 dev.off()
 
 
@@ -906,7 +910,7 @@ fishlife_multicorr <- GGally::ggpairs(
 
 pdf(file = "res/figs/supp/fig_s6/fig_s6a_fishlife.pdf",
     width=8.75, height=8.75)
-fishlife_multicorr
+print(fishlife_multicorr)
 dev.off()
 
 # Correlation network visualization
@@ -937,7 +941,7 @@ traits_multicorr_all <- GGally::ggpairs(
 
 pdf(file = "res/figs/supp/fig_s6/fig_s6b_alltraits.pdf",
     width=10, height=10)
-traits_multicorr_all
+print(traits_multicorr_all)
 dev.off()
 
 # Correlation network visualization
@@ -1074,7 +1078,7 @@ table(df_scl_aicc$shift_dec)
 
 pdf(file = "res/figs/supp/fig_s8/fig_s8a_decaicc.pdf",
     width=6, height=4)
-m_dec_aicc
+print(m_dec_aicc)
 dev.off()
 
 
@@ -1108,7 +1112,7 @@ table(df_scl_aicc$shift_inc)
 
 pdf(file = "res/figs/supp/fig_s8/fig_s8b_incaicc.pdf",
     width=6, height=4)
-m_inc_aicc
+print(m_inc_aicc)
 dev.off()
 
 
@@ -1175,7 +1179,7 @@ table(df_scl_Umsy$shift_dec)
 
 pdf(file = "res/figs/supp/fig_s8/fig_s8c_decUmsy.pdf",
     width=6, height=4)
-m_dec_Umsy
+print(m_dec_Umsy)
 dev.off()
 
 # Stocks removed
@@ -1219,5 +1223,5 @@ table(df_scl_Umsy$shift_inc)
 
 pdf(file = "res/figs/supp/fig_s8/fig_s8d_incUmsy.pdf",
     width=6, height=4)
-m_inc_Umsy
+print(m_inc_Umsy)
 dev.off()
