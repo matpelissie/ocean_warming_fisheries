@@ -1,0 +1,1 @@
+http://geonode.iwlearn.org/geoserver/wfs?access_token=689743d98d5611ef9567000d3ab6a624?format_options=charset%3AUTF-8&typename=geonode%3Almes66gcd&outputFormat=SHAPE-ZIP&version=1.0.0&service=WFS&request=GetFeature&access_token=689743d98d5611ef9567000d3ab6a624
