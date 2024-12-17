@@ -1384,7 +1384,8 @@ best_traj_aic <- function(res, str,
           dplyr::contains("loc_brk_asd_")), na.rm=TRUE),
         dplyr::across(.cols = dplyr::contains(
           c("loc_brk_asd_", "diff_loc_")),
-          ~ dplyr::na_if(., Inf)))
+          ~ dplyr::na_if(., Inf))) %>%
+      suppressWarnings()
   }
 
   # Expand in length to select by AICc below:
