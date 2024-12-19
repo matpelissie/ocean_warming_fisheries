@@ -112,7 +112,7 @@ rand_dec <- hier.part::rand.hp(df$shift_dec, env, fam = "binomial",
 
 print("Randomizations for hierarchical partioning (abrupt declines) done.")
 
-hier.part_dec <- dplyr::bind_cols(rand_dec, part_dec$IJ) %>%
+hier.part_dec <- dplyr::bind_cols(part_dec$IJ, rand_dec) %>%
   tibble::rownames_to_column(var="variable")
 
 readr::write_csv(hier.part_dec, "res/figs/supp/tab_s2_hier.partdec.csv")
@@ -132,7 +132,7 @@ rand_inc <- hier.part::rand.hp(df$shift_inc, env, fam = "binomial",
 
 print("Randomizations for hierarchical partioning (abrupt increases) done.")
 
-hier.part_inc <- dplyr::bind_cols(rand_inc, part_inc$IJ) %>%
+hier.part_inc <- dplyr::bind_cols(part_dec$IJ, rand_dec) %>%
   tibble::rownames_to_column(var="variable")
 readr::write_csv(hier.part_inc, "res/figs/supp/tab_s3_hier.partinc.csv")
 
