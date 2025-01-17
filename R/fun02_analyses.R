@@ -11,11 +11,7 @@
 
 #' Compute surplus production in raw data frames and add it to the dataset
 #'
-#' @param
-#'
 #' @return No return value.
-#'
-#' @export
 
 add_surplus <- function(){
 
@@ -77,8 +73,6 @@ add_surplus <- function(){
 #' @param min_year Minimum year
 #'
 #' @return List of stocks with available timeseries as requested.
-#'
-#' @export
 
 list_available <- function(ts_types, min_len=25, min_year=NULL) {
 
@@ -130,7 +124,6 @@ list_available <- function(ts_types, min_len=25, min_year=NULL) {
 #' @param ts_type Type(s) of empirical time series (TCbest, TBbest, SProd...).
 #'
 #' @return Data frame with timeseries with gaps and the number of missing years.
-#' @export
 
 gaps_info <- function(ts_type){
 
@@ -168,8 +161,6 @@ gaps_info <- function(ts_type){
 #' @param drop_na Keep only years with all types of timeseries available.
 #'
 #' @return Data frame of the selected timeseries.
-#'
-#' @export
 
 extract_RAM <- function(id, ts_type, drop_na=TRUE){
 
@@ -193,10 +184,9 @@ extract_RAM <- function(id, ts_type, drop_na=TRUE){
 
 #' Extract all stock traits
 #'
-#' @param traj_SProd Data frame with sums for trend and class
+#' @param traj_SProd A classification summary data frame.
 #'
 #' @return a data frame with traits as columns and as many rows as stocks
-#' @export
 
 traits_fun <- function(traj_SProd){
 
@@ -677,7 +667,7 @@ traits_fun <- function(traj_SProd){
 
 #' Add collapse to classification summary according to a given definition
 #'
-#' @param traj_SProd A classification summary.
+#' @param traj_SProd A classification summary data frame.
 #' @param coll_def A vector defining the threshold of collapsed state.
 #' The 1st value indicates the parameter considered ("bavg", "bmax", or "bmsy",
 #' for average, maximum biomass, and biomass at MSY respectively). The second
@@ -686,9 +676,6 @@ traits_fun <- function(traj_SProd){
 #' years of under collapse threshold to be considered as collapsed.
 #'
 #' @return The classification summary with information about collapse.
-#' @export
-#'
-#' @examples
 
 add_collapsed <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=5){
 
@@ -797,16 +784,14 @@ add_collapsed <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=5){
 
 #' Plot sunburst pie chart by trajectory
 #'
-#' @param df_sum Data frame with sums for trend and class
-#' @param title Character to display as title
-#' @param size Numeric, text size
-#' @param size_caption Numeric, caption text size
-#' @param no_text Logical, to hide trajectory names and percentages
-#' @param no_caption Logical, to hide caption with number of time series
+#' @param df_sum A data frame with sums for trend and class.
+#' @param title An expresion to display as title.
+#' @param size Numeric, text size.
+#' @param size_caption Numeric, caption text size.
+#' @param no_text Logical, to hide trajectory names and percentages.
+#' @param no_caption Logical, to hide caption with number of time series.
 #'
-#' @return a sunburst plot
-#' @export
-
+#' @return A sunburst plot.
 
 sunburst_traj_plot <- function(df_sum, title=NULL, size=7, size_caption=13,
                                no_text=FALSE, no_caption=FALSE){
@@ -903,16 +888,14 @@ sunburst_traj_plot <- function(df_sum, title=NULL, size=7, size_caption=13,
 
 #' Plot sunburst pie chart by trajectory (quadratic detailed)
 #'
-#' @param df_sum Data frame with sums for trend and class
-#' @param title Character to display as title
-#' @param size Numeric, text size
-#' @param size_caption Numeric, caption text size
-#' @param no_text Logical, to hide trajectory names and percentages
-#' @param no_caption Logical, to hide caption with number of time series
+#' @param df_sum A data frame with sums for trend and class.
+#' @param title An expresion to display as title.
+#' @param size Numeric, text size.
+#' @param size_caption Numeric, caption text size.
+#' @param no_text Logical, to hide trajectory names and percentages.
+#' @param no_caption Logical, to hide caption with number of time series.
 #'
-#' @return a sunburst plot
-#' @export
-
+#' @return A sunburst plot.
 
 sunburst_traj_plot_det <- function(df_sum, title=NULL, size=7, size_caption=15,
                                    no_text=FALSE, no_caption=FALSE){
@@ -1012,30 +995,27 @@ sunburst_traj_plot_det <- function(df_sum, title=NULL, size=7, size_caption=15,
 
 }
 
-
+prop_warm_plot(traj_SProd, main_lme, asstchange_LME,
+               expression(class=="abrupt" & trend=="decrease"), 1)
 
 #' Plot relationship between warming rate and a given proportion at LME level
 #'
-#' @param df
-#' @param main_lme
-#' @param asstchange_LME
-#' @param filter
-#' @param weight
-#' @param min_tot
+#' @param traj_SProd A classification summary data frame.
+#' @param main_lme A data frame with stocks and associated large marine area.
+#' @param asstchange_LME A data frame with large marine areas and trend in SST.
+#' @param filter An expression to filter stocks based on their trajectory.
+#' @param min_tot An integer for the minimum number of stocks by LME to be included.
 #'
-#' @return
-#' @export
-#'
-#' @examples
+#' @return A ggplot object.
 
-prop_warm_plot <- function(df, main_lme, asstchange_LME, filter,
-                           weight=NULL, min_tot=0){
+prop_warm_plot <- function(traj_SProd, main_lme, asstchange_LME, filter,
+                           min_tot=0){
 
-  prop_sstchange_by_lme <- dplyr::left_join(df, main_lme, by="stockid") %>%
+  prop_sstchange_by_lme <- dplyr::left_join(traj_SProd, main_lme, by="stockid") %>%
     dplyr::group_by(LME_NAME) %>%
     dplyr::summarise(n_tot = n()) %>%
     dplyr::left_join(
-      dplyr::left_join(df, main_lme, by="stockid") %>%
+      dplyr::left_join(traj_SProd, main_lme, by="stockid") %>%
         dplyr::filter(eval(filter)) %>%
         dplyr::group_by(LME_NAME) %>%
         dplyr::summarise(count = n()),
@@ -1043,16 +1023,9 @@ prop_warm_plot <- function(df, main_lme, asstchange_LME, filter,
     dplyr::mutate(prop = count/n_tot) %>%
     left_join(asstchange_LME, by=c("LME_NAME"="lme"))
 
-  if (weight=="n_tot"){
-    mod <- lm(prop~sst_change,
-              weights=n_tot,
-              prop_sstchange_by_lme %>%
-                dplyr::filter(n_tot>min_tot))
-  } else {
-    mod <- lm(prop~sst_change,
-              prop_sstchange_by_lme %>%
-                dplyr::filter(n_tot>min_tot))
-  }
+  mod <- lm(prop~sst_change,
+            prop_sstchange_by_lme %>%
+              dplyr::filter(n_tot>min_tot))
 
   summ <- summary(mod)
   coeff <- paste0("p = ", format(round(summ$coefficients[2,4],3), nsmall=3),
@@ -1096,11 +1069,7 @@ prop_warm_plot <- function(df, main_lme, asstchange_LME, filter,
 #' @param csec_coll An integer specifying the minimal number of consecutive
 #' years of under collapse threshold to be considered as collapsed.
 #'
-#' @return
-#' @export
-#'
-#' @examples
-
+#' @return A patchwork plot.
 # coll_def=c("bavg", 0.25) # Essington et al. 2015
 # coll_def=c("bmsy", 0.2) # Costello et al. 2012
 
@@ -1219,8 +1188,7 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
 
   # Correlation negative PAS vs. warming ---
   (nPAS_warm <- prop_warm_plot(traj_SProd, main_lme, asstchange_LME,
-                               expression(class=="abrupt" & trend=="decrease"),
-                               weight="", 1)+
+                               expression(class=="abrupt" & trend=="decrease"), 1)+
       labs(y="Proportion of negative PAS",
            tag="D")+
       theme(axis.text = element_text(size=12),
@@ -1231,8 +1199,7 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
 
   # Correlation positive PAS vs. warming ---
   (pPAS_warm <- prop_warm_plot(traj_SProd, main_lme, asstchange_LME,
-                               expression(class=="abrupt" & trend=="increase"),
-                               weight="", 1)+
+                               expression(class=="abrupt" & trend=="increase"), 1)+
       labs(y="Proportion of positive PAS",
            tag="E")+
       theme(axis.text = element_text(size=12),
@@ -1243,8 +1210,7 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
   # Correlation collapse vs. warming ---
 
   (coll_warm <- prop_warm_plot(coll, main_lme, asstchange_LME,
-                               expression(did_collapse=="Yes"),
-                               weight="", 1)+
+                               expression(did_collapse=="Yes"), 1)+
       labs(y="Proportion of collapses",
            tag="F")+
       theme(axis.text = element_text(size=12),

@@ -17,8 +17,6 @@
 #' @param df Data frame with timeseries to classify.
 #'
 #' @return List of data frames ready for analyses and the type of timeseries.
-#'
-#' @export
 
 prep_data_simpl <- function(df){
 
@@ -73,7 +71,7 @@ prep_data_simpl <- function(df){
 #' @return Three-row data frame with infos about the trajectory
 #' (no change, linear, and polynomial).
 #'
-#' @export
+#' @references Rigal S., Devictor V., Dakos V. (2020) 'A method for classifying and comparing non-linear trajectories of ecological variables'. Ecological Indicators 112, 106113.
 
 class_trajectory_mod <- function (Y = NULL, X = NULL, dataset = NULL,
                                   interval_size = 0.5){
@@ -336,7 +334,7 @@ class_trajectory_mod <- function (Y = NULL, X = NULL, dataset = NULL,
 #'
 #' @return Data frame with as many rows as iterations.
 #'
-#' @export
+#' @references Rigal S., Devictor V., Dakos V. (2020) 'A method for classifying and comparing non-linear trajectories of ecological variables'. Ecological Indicators 112, 106113.
 
 mc_trend <- function(dataset, niter, ref_year=NULL, correction=FALSE, fit=NULL){
 
@@ -486,7 +484,7 @@ mc_trend <- function(dataset, niter, ref_year=NULL, correction=FALSE, fit=NULL){
 #'
 #' @return Data frame with as many rows as time series.
 #'
-#' @export
+#' @references Rigal S., Devictor V., Dakos V. (2020) 'A method for classifying and comparing non-linear trajectories of ecological variables'. Ecological Indicators 112, 106113.
 
 res_trend <- function(sets, niter, ref_year=NULL, correction=FALSE, fit=NULL){
 
@@ -610,11 +608,6 @@ res_trend <- function(sets, niter, ref_year=NULL, correction=FALSE, fit=NULL){
 #' - one-row data frame with info about potentially detected breakpoints
 #' - vector of detection values from as_detect method
 #' - list of runs corresponding to local extrema in detection timeseries
-#'
-#' @references Boulton C. A. & Lenton T. M. (2019) 'A new method for detecting
-#' abrupt shifts in time series'.
-#'
-#' @export
 
 asd_fct <- function(ts, asd_thr, check_true_shift,
                     lowwl, highwl, mad_thr, mad_cst){
@@ -723,8 +716,6 @@ asd_fct <- function(ts, asd_thr, check_true_shift,
 #'
 #' @references Fong Y., Huang Y., Gilbert P. B. & Permar S. R. (2017) 'chngpt:
 #' threshold regression model estimation and inference' BMC Bioinformatics.
-#'
-#' @export
 
 chg_fct <- function(ts){
 
@@ -804,8 +795,6 @@ chg_fct <- function(ts){
 #' - vector of detection values from asd method
 #' - list of runs of uncertainty for asdetect breakpoints
 #' - list summarizing the parameters used
-#'
-#' @export
 
 shifts <- function(ts, abr_mtd, ...){
 
@@ -879,8 +868,6 @@ shifts <- function(ts, abr_mtd, ...){
 #' @return List of two objects:
 #' - list of results from breakpoints analyses for each timeseries
 #' - list of main output from breakpoints analyses by breakpoint method
-#'
-#' @export
 
 abrupt_classif <- function(sets, abr_mtd, ...){
 
@@ -932,7 +919,8 @@ abrupt_classif <- function(sets, abr_mtd, ...){
 #' t  Time values
 #' detect  Detection time series
 #'
-#' @export
+#' @references Boulton C. A. & Lenton T. M. (2019) 'A new method for detecting
+#' abrupt shifts in time series'.
 
 as_detect_mad <- function (ts, dt = NA, lowwl = 5, highwl = "default",
                            mad_thr=3, mad_cst=1.4826){
@@ -1054,7 +1042,8 @@ environment(as_detect_mad) <- asNamespace('asdetect')
 #' position or time is returned, along with the message
 #' 'Threshold not detected, maximum returned instead' is printed.
 #'
-#' @export
+#' @references Boulton C. A. & Lenton T. M. (2019) 'A new method for detecting
+#' abrupt shifts in time series'.
 
 where_as_quiet <- function (ts, dt = NA, thresh = 0.7, quiet = FALSE){
 
@@ -1183,7 +1172,8 @@ environment(where_as_quiet) <- asNamespace('asdetect')
 #' @return A value of 1 is returned if the function determines that a
 #' true abrupt shift has occurred, and 0 otherwise.
 #'
-#' @export
+#' @references Boulton C. A. & Lenton T. M. (2019) 'A new method for detecting
+#' abrupt shifts in time series'.
 
 custom_shift_type <- function (ts, where_as_pos, dt = FALSE, width = "tenth")
 {
@@ -1252,8 +1242,6 @@ environment(custom_shift_type) <- asNamespace('asdetect')
 #' @return List of two objects:
 #' - data frame with the results of different trajectory fitting
 #' - list by trajectory type of the main outputs
-#'
-#' @export
 
 fit_models <- function(sets, abr_mtd, ...){
 
@@ -2043,8 +2031,6 @@ run_classif_data <- function(df_list, min_len=20, group, time, variable,
 #' @param ... Additional arguments to be passed.
 #'
 #' @return List of plots with best fit
-#'
-#' @export
 
 plot_traj_multi_abr <- function(sets, rslt, plot_class, best_traj,
                                 asd_thr=NULL, best_traj_loo=NULL,
