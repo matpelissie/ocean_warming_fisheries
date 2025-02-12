@@ -995,8 +995,6 @@ sunburst_traj_plot_det <- function(df_sum, title=NULL, size=7, size_caption=15,
 
 }
 
-prop_warm_plot(traj_SProd, main_lme, asstchange_LME,
-               expression(class=="abrupt" & trend=="decrease"), 1)
 
 #' Plot relationship between warming rate and a given proportion at LME level
 #'
