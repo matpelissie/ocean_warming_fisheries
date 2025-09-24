@@ -1018,12 +1018,15 @@ prop_warm_plot <- function(traj_SProd, main_lme, asstchange_LME, filter,
         dplyr::group_by(LME_NAME) %>%
         dplyr::summarise(count = n()),
       by="LME_NAME") %>%
+    dplyr::mutate(count = ifelse(is.na(count), 0, count)) %>%
     dplyr::mutate(prop = count/n_tot) %>%
     left_join(asstchange_LME, by=c("LME_NAME"="lme"))
 
   mod <- lm(prop~sst_change,
             prop_sstchange_by_lme %>%
-              dplyr::filter(n_tot>min_tot))
+              dplyr::filter(n_tot>min_tot)
+            ,weight=n_tot
+  )
 
   summ <- summary(mod)
   coeff <- paste0("p = ", format(round(summ$coefficients[2,4],3), nsmall=3),
@@ -1044,13 +1047,94 @@ prop_warm_plot <- function(traj_SProd, main_lme, asstchange_LME, filter,
                 slope=summ$coefficients[2,1],
                 col="grey30", lty=line, linewidth=1.5)+
     geom_text(x = 0.007, y = 0.9, label = coeff, size=5, check_overlap = TRUE)+
-    coord_cartesian(ylim=c(0,1))+
+    coord_cartesian(ylim=c(-0.05, 1.05))+
     scale_y_continuous(expand=c(0,0))+
     scale_size_continuous(breaks = c(5, 10, 25), name="Stocks by LME")+
     theme_classic()+
     guides(size = guide_legend(position = "inside"))+
     theme(legend.position.inside = c(0.85, 0.8))+
     labs(x="SST rate of change (1950-2020) [°C/y]")
+
+  return(plot)
+}
+
+
+#' Plot relationship between proportions of collapsed stocks and abrupt shifts at LME level
+#'
+#' @param traj_SProd A classification summary data frame.
+#' @param coll_def A vector defining the threshold of collapsed state.
+#' The 1st value indicates the parameter considered ("bavg", "bmax", or "bmsy",
+#' for average, maximum biomass, and biomass at MSY respectively). The second
+#' value indicates the fraction of biomass parameter considered as threshold.
+#' @param csec_coll An integer specifying the minimal number of consecutive
+#' years of under collapse threshold to be considered as collapsed.
+#' @param filter An expression to filter stocks based on their trajectory.
+#' @param min_tot An integer for the minimum number of stocks by LME to be included.
+#'
+#' @return A ggplot object.
+
+prop_abr_coll_plot <- function(traj_SProd, coll_def, csec_coll,
+                               filter, min_tot=0){
+
+  # Load main LME
+  main_lme <- readr::read_csv("data/spatial_data/main_lme.csv")
+
+  coll_lme <- add_collapsed(traj_SProd, coll_def, csec_coll) %>%
+    dplyr::left_join(main_lme, by="stockid")
+
+  prop_collabr_by_lme <- coll_lme %>%
+    dplyr::group_by(LME_NAME) %>%
+    dplyr::summarise(n_tot = n()) %>%
+    dplyr::left_join(
+      coll_lme %>%
+        dplyr::filter(eval(filter)) %>%
+        dplyr::group_by(LME_NAME) %>%
+        dplyr::summarise(count_abr = n()),
+      by="LME_NAME") %>%
+    dplyr::left_join(
+      coll_lme %>%
+        dplyr::filter(did_collapse=="Yes") %>%
+        dplyr::group_by(LME_NAME) %>%
+        dplyr::summarise(count_coll = n()),
+      by="LME_NAME") %>%
+    dplyr::mutate(count_abr = ifelse(is.na(count_abr), 0, count_abr),
+                  count_coll = ifelse(is.na(count_coll), 0, count_coll)) %>%
+    dplyr::mutate(prop_abr = count_abr/n_tot,
+                  prop_coll = count_coll/n_tot)
+
+  mod <- lm(prop_coll~prop_abr,
+            prop_collabr_by_lme %>%
+              dplyr::filter(n_tot>min_tot)
+            ,weight=n_tot
+  )
+
+  summ <- summary(mod)
+  coeff <- paste0("p = ", format(round(summ$coefficients[2,4],3), nsmall=3),
+                  ", R2 = ", round(summ$adj.r.squared, 2))
+
+  if (summ$coefficients[2,4] < 0.05){
+    line <- "solid"
+  } else {
+    line <- "dashed"
+  }
+
+  plot <- prop_collabr_by_lme %>%
+    dplyr::filter(n_tot>min_tot) %>%
+    tidyr::drop_na(prop_abr, prop_coll) %>%
+    ggplot(aes(x=prop_abr, y=prop_coll))+
+    geom_point(aes(size=n_tot), alpha=0.6)+
+    geom_abline(intercept=summ$coefficients[1,1],
+                slope=summ$coefficients[2,1],
+                col="grey30", lty=line, linewidth=1.5)+
+    geom_text(x = 0.2, y = 0.9, label = coeff, size=5, check_overlap = TRUE)+
+    coord_cartesian(ylim=c(-0.05, 1.05))+
+    scale_y_continuous(expand=c(0,0))+
+    scale_size_continuous(breaks = c(5, 10, 25), name="Stocks by LME")+
+    theme_classic()+
+    guides(size = guide_legend(position = "inside"))+
+    theme(legend.position.inside = c(0.85, 0.8),
+          legend.background = element_rect(fill = "transparent"),
+          legend.key = element_rect(fill = "transparent"))
 
   return(plot)
 }
@@ -1195,15 +1279,19 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
             plot.tag=element_text(size=20, face="bold")))
 
 
-  # Correlation positive PAS vs. warming ---
-  (pPAS_warm <- prop_warm_plot(traj_SProd, main_lme, asstchange_LME,
-                               expression(class=="abrupt" & trend=="increase"), 1)+
-      labs(y="Proportion of positive PAS",
-           tag="E")+
-      theme(axis.text = element_text(size=12),
-            axis.title = element_text(size=15),
-            axis.title.x = element_text(size=13),
-            plot.tag=element_text(size=20, face="bold")))
+  # Correlation negative PAS vs. collapse ---
+  nPAS_coll <-
+    prop_abr_coll_plot(traj_SProd, coll_def, csec_coll,
+                       expression(class=="abrupt" & trend=="decrease"), 1)+
+    labs(x="Proportion of negative PAS",
+         y="Proportion of collapses",
+         tag="E"
+    )+
+    theme(axis.text = element_text(size=12),
+          axis.title = element_text(size=15),
+          axis.title.x = element_text(size=13),
+          plot.tag=element_text(size=20, face="bold"))
+
 
   # Correlation collapse vs. warming ---
 
@@ -1216,8 +1304,9 @@ shift_coll_plot <- function(traj_SProd, coll_def=c("bavg", 0.25), csec_coll=1){
             axis.title.x = element_text(size=13),
             plot.tag=element_text(size=20, face="bold")))
 
+
   comp_fig <- (prop_coll_shift + abr_coll_shift + time_coll_shift) /
-    (nPAS_warm + pPAS_warm + coll_warm)
+    (nPAS_warm + nPAS_coll + coll_warm)
 
   return(comp_fig)
 
