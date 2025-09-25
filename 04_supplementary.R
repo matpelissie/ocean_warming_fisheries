@@ -1226,3 +1226,34 @@ pdf(file = "res/figs/supp/fig_s8/fig_s8d_incUmsy.pdf",
     width=6, height=4)
 print(m_inc_Umsy)
 dev.off()
+
+
+# Fig S9 - PAS collapse AICc only -----------------------------------------
+
+dir.create("res/figs/supp/fig_s9", showWarnings=FALSE)
+
+# Collapse <25% average stock biomass
+bavg0.25_aicc <- shift_coll_plot(traj_SProd_aicc, coll_def=c("bavg", 0.25), csec_coll = 2)
+
+ggsave(filename="res/figs/supp/fig_s9/fig_s9_bavg0.25_cseccoll2.pdf",
+       width=14, height=8, plot=bavg0.25_aicc)
+
+### Statistical tests ----------------------------------------------------
+
+# Magnitude of abrupt declines
+coll_aicc <- add_collapsed(traj_SProd_aicc, coll_def=c("bavg", 0.25), csec_coll=2)
+
+(t_dec <-
+    t.test(coll_aicc[coll_aicc$traj=="decrease abrupt" & coll_aicc$did_collapse=="Yes",]$mag,
+           coll_aicc[coll_aicc$traj=="decrease abrupt" & coll_aicc$did_collapse=="No",]$mag))
+# p-value = 0.04422
+
+(t_inc <-
+    t.test(coll_aicc[coll_aicc$traj=="increase abrupt" & coll_aicc$did_collapse=="Yes",]$mag,
+           coll_aicc[coll_aicc$traj=="increase abrupt" & coll_aicc$did_collapse=="No",]$mag))
+# p-value = 0.6642
+
+# Stocks with abrupt decrease followed by collapse
+coll_aicc %>% dplyr::filter(traj=="decrease abrupt" & did_collapse=="Yes") %>%
+  dplyr::mutate(diff = loc_brk_chg-first_coll_y) %>%
+  dplyr::arrange(diff)
