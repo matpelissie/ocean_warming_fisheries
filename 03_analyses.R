@@ -517,7 +517,7 @@ dev.off()
 # => Panels assembled with Inkscape to arrange the legends
 
 
-## Fig 4  ------------------------------------------------------------------
+## Fig 4 - PAS collapse ---------------------------------------
 
 dir.create("res/figs/fig4", showWarnings=FALSE)
 
