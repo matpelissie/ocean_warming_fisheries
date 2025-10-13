@@ -61,6 +61,7 @@ main_lme <- readr::read_csv("data/spatial_data/main_lme.csv")
 dir.create("res/figs/supp", showWarnings=FALSE)
 
 
+
 # Table S1 - Productivity trajectories summary ----------------------------
 
 traj_SProd_summary <-
@@ -84,6 +85,7 @@ traj_SProd_summary <-
 
 readr::write_csv(traj_SProd_summary,
                  "res/figs/supp/tab_s1_trajsummary.csv")
+
 
 
 # Table S2 - Hier.part abrupt declines --------------------------------------
@@ -116,6 +118,7 @@ hier.part_dec <- dplyr::bind_cols(part_dec$IJ, rand_dec) %>%
   tibble::rownames_to_column(var="variable")
 
 readr::write_csv(hier.part_dec, "res/figs/supp/tab_s2_hier.partdec.csv")
+
 
 
 # Table S3 - Hier.part increasing ----------------------------------------------
@@ -492,7 +495,89 @@ ggsave("res/figs/supp/fig_s4/fig_s4_collsst.pdf", width=15, height=5, plot=fig_s
 
 
 
-# Fig S5 - Trajectory overview classified on AICc only --------------------
+# Fig S5 - Correlation matrices ----------------------------------------------
+
+dir.create("res/figs/supp/fig_s5", showWarnings=FALSE)
+
+col_fn <- function(data, mapping, method="p", use="pairwise", ...){
+
+  # grab data
+  x <- GGally::eval_data_col(data, mapping$x)
+  y <- GGally::eval_data_col(data, mapping$y)
+
+  # calculate correlation
+  corr <- cor(x, y, method=method, use=use)
+
+  # calculate colour based on correlation value
+  colFn <- colorRampPalette(c("blue", "white", "red"), interpolate ='spline')
+  fill <- colFn(100)[findInterval(corr, seq(-1, 1, length=100))]
+
+  GGally::ggally_cor(data = data, mapping = mapping, col="black", ...) +
+    theme_void() +
+    theme(panel.background = element_rect(fill=fill))
+}
+
+## Correlation matrix FishLife traits ----
+fishlife_multicorr <- GGally::ggpairs(
+  mod_df01_default %>%
+    dplyr::select(stockid, Species, Loo, K, Winfinity, tmax, tm, M, Lm) %>%
+    dplyr::mutate(across(where(is.numeric), ~ c(scale(.)))) %>%
+    tidyr::drop_na(stockid) %>%
+    dplyr::select(-c(stockid, Species)),
+  upper = list(continuous = col_fn),
+  lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
+               combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
+
+pdf(file = "res/figs/supp/fig_s5/fig_s5a_fishlife.pdf",
+    width=8.75, height=8.75)
+print(fishlife_multicorr)
+dev.off()
+
+# Correlation network visualization
+corrr::correlate(
+  mod_df01_default %>%
+    dplyr::select(stockid, Species, Loo, K, Winfinity, tmax, tm, M, Lm) %>%
+    dplyr::mutate(across(where(is.numeric), ~ c(scale(.)))) %>%
+    tidyr::drop_na(stockid),
+  method="pearson") %>%
+  corrr::network_plot(min_cor = 0.7, curved=TRUE)
+
+
+## Correlation matrix all traits retained ----
+traits_multicorr_all <- GGally::ggpairs(
+  mod_df01_default %>%
+    dplyr::mutate(across(where(is.numeric) & !contains(c("X", "Y")),
+                         ~ c(scale(.)))) %>%
+    tidyr::drop_na(stockid) %>%
+    dplyr::select(Lm, tm, sst_change_prshf, sst_avg_prshf,
+                  mean_ER_prshf, ER_change_prshf, X, Y) %>%
+    dplyr::rename(SST_mean = sst_avg_prshf,
+                  SST_change = sst_change_prshf,
+                  ER_mean = mean_ER_prshf,
+                  ER_change = ER_change_prshf),
+  upper = list(continuous = col_fn),
+  lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
+               combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
+
+pdf(file = "res/figs/supp/fig_s5/fig_s5b_alltraits.pdf",
+    width=10, height=10)
+print(traits_multicorr_all)
+dev.off()
+
+# Correlation network visualization
+corrr::correlate(
+  mod_df01_default %>%
+    dplyr::mutate(across(where(is.numeric) & !contains(c("X", "Y")),
+                         ~ c(scale(.)))) %>%
+    tidyr::drop_na(stockid) %>%
+    dplyr::select(Lm, tm, sst_change_prshf, sst_avg_prshf,
+                  mean_ER_prshf, ER_change_prshf, X, Y),
+  method="pearson") %>%
+  corrr::network_plot(min_cor = 0.7, curved=TRUE)
+
+
+
+# Fig S6 - Trajectory overview classified on AICc only --------------------
 
 traj_SProd_aicc <-
   readRDS("res/classif/classif_v4.61_SProd_minlen25_normTBavg_looTRUE_aicasd_start1950_AICconly.rds") %>%
@@ -510,7 +595,7 @@ traj_SProd_aicc <-
                      dplyr::select(stockid, primary_FAOarea),
                    by="stockid")
 
-dir.create("res/figs/supp/fig_s5", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s6", showWarnings=FALSE)
 
 ### a - Overall ---------------------------------------------------------
 
@@ -540,7 +625,7 @@ SProd_sunburst <- sunburst_traj_plot_det(traj_SProd_sum_det, size=4,
   labs(tag="A")+
   theme(plot.tag=element_text(size=20, face = "bold"))
 
-pdf(file = "res/figs/supp/fig_s5/fig_s5a.pdf",
+pdf(file = "res/figs/supp/fig_s6/fig_s6a.pdf",
     width=8, height=6)
 print(SProd_sunburst)
 dev.off()
@@ -656,7 +741,7 @@ space <- ggplot(areas %>%
   theme(plot.tag=element_text(size=20, face = "bold"))+
   labs(tag="D")
 
-pdf(file = "res/figs/supp/fig_s5/fig_5b.pdf",
+pdf(file = "res/figs/supp/fig_s6/fig_6b.pdf",
     width=12, height=9)
 print(space)
 dev.off()
@@ -755,7 +840,7 @@ abr_events <- traj_SProd_aicc %>%
 abr_time <- abr_time_pos / abr_time_neg
 
 ggsave(plot = abr_time,
-       "res/figs/supp/fig_s5/fig_s5cd.pdf", width=5, height=5.625)
+       "res/figs/supp/fig_s6/fig_s6cd.pdf", width=5, height=5.625)
 
 
 ### Statistical tests ----------------------------------------------------
@@ -876,142 +961,12 @@ chi_traj_ord$stdres %>%
   dplyr::arrange(desc(abs(stdres)))
 
 
-# Fig S6 - Correlation matrices ----------------------------------------------
-
-dir.create("res/figs/supp/fig_s6", showWarnings=FALSE)
-
-col_fn <- function(data, mapping, method="p", use="pairwise", ...){
-
-  # grab data
-  x <- GGally::eval_data_col(data, mapping$x)
-  y <- GGally::eval_data_col(data, mapping$y)
-
-  # calculate correlation
-  corr <- cor(x, y, method=method, use=use)
-
-  # calculate colour based on correlation value
-  colFn <- colorRampPalette(c("blue", "white", "red"), interpolate ='spline')
-  fill <- colFn(100)[findInterval(corr, seq(-1, 1, length=100))]
-
-  GGally::ggally_cor(data = data, mapping = mapping, col="black", ...) +
-    theme_void() +
-    theme(panel.background = element_rect(fill=fill))
-}
-
-## Correlation matrix FishLife traits ----
-fishlife_multicorr <- GGally::ggpairs(
-  mod_df01_default %>%
-    dplyr::select(stockid, Species, Loo, K, Winfinity, tmax, tm, M, Lm) %>%
-    dplyr::mutate(across(where(is.numeric), ~ c(scale(.)))) %>%
-    tidyr::drop_na(stockid) %>%
-    dplyr::select(-c(stockid, Species)),
-  upper = list(continuous = col_fn),
-  lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
-               combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
-
-pdf(file = "res/figs/supp/fig_s6/fig_s6a_fishlife.pdf",
-    width=8.75, height=8.75)
-print(fishlife_multicorr)
-dev.off()
-
-# Correlation network visualization
-corrr::correlate(
-  mod_df01_default %>%
-    dplyr::select(stockid, Species, Loo, K, Winfinity, tmax, tm, M, Lm) %>%
-    dplyr::mutate(across(where(is.numeric), ~ c(scale(.)))) %>%
-    tidyr::drop_na(stockid),
-  method="pearson") %>%
-  corrr::network_plot(min_cor = 0.7, curved=TRUE)
-
-
-## Correlation matrix all traits retained ----
-traits_multicorr_all <- GGally::ggpairs(
-  mod_df01_default %>%
-    dplyr::mutate(across(where(is.numeric) & !contains(c("X", "Y")),
-                         ~ c(scale(.)))) %>%
-    tidyr::drop_na(stockid) %>%
-    dplyr::select(Lm, tm, sst_change_prshf, sst_avg_prshf,
-                  mean_ER_prshf, ER_change_prshf, X, Y) %>%
-    dplyr::rename(SST_mean = sst_avg_prshf,
-                  SST_change = sst_change_prshf,
-                  ER_mean = mean_ER_prshf,
-                  ER_change = ER_change_prshf),
-  upper = list(continuous = col_fn),
-  lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
-               combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
-
-pdf(file = "res/figs/supp/fig_s6/fig_s6b_alltraits.pdf",
-    width=10, height=10)
-print(traits_multicorr_all)
-dev.off()
-
-# Correlation network visualization
-corrr::correlate(
-  mod_df01_default %>%
-    dplyr::mutate(across(where(is.numeric) & !contains(c("X", "Y")),
-                         ~ c(scale(.)))) %>%
-    tidyr::drop_na(stockid) %>%
-    dplyr::select(Lm, tm, sst_change_prshf, sst_avg_prshf,
-                  mean_ER_prshf, ER_change_prshf, X, Y),
-  method="pearson") %>%
-  corrr::network_plot(min_cor = 0.7, curved=TRUE)
 
 
 
-# Fig S7 - Abrupt shifts and alternative collapse definitions -------
+# Fig S7 - Explanatory factors of PAS (alternative models) ----------
 
 dir.create("res/figs/supp/fig_s7", showWarnings=FALSE)
-
-fig_s7 <- bmax0.1[[1]] / bavg0.15[[1]] / bavg0.5[[1]] +
-  patchwork::plot_annotation(tag_levels = "A")
-
-ggsave(filename="res/figs/supp/fig_s7/fig_s7_coll.pdf", width=14, height=12, plot=fig_s7)
-
-## Statistical tests ----------------------------------------------------
-
-# Collapse <10% maximum stock biomass
-coll_bmax0.1 <- add_collapsed(traj_SProd, coll_def=c("bmax", 0.1), csec_coll=2)
-(t_dec_bmax0.1 <-
-    t.test(coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
-                          coll_bmax0.1$did_collapse=="Yes",]$mag,
-           coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
-                          coll_bmax0.1$did_collapse=="No",]$mag))
-# p-value = 0.0225
-
-# Collapse <15% average stock biomass
-coll_bavg0.15 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.15), csec_coll=2)
-(t_dec_bavg0.15 <-
-    t.test(coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
-                           coll_bavg0.15$did_collapse=="Yes",]$mag,
-           coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
-                           coll_bavg0.15$did_collapse=="No",]$mag))
-# p-value = 0.062
-
-# Collapse <50% average stock biomass
-coll_bavg0.5 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.5), csec_coll=2)
-(t_dec_bavg0.5 <-
-    t.test(coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
-                          coll_bavg0.5$did_collapse=="Yes",]$mag,
-           coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
-                          coll_bavg0.5$did_collapse=="No",]$mag))
-# p-value = 0.2347
-
-(t_inc_bavg0.5 <-
-    t.test(coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
-                          coll_bavg0.5$did_collapse=="Yes",]$mag,
-           coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
-                          coll_bavg0.5$did_collapse=="No",]$mag))
-# p-value = 0.8263
-
-
-
-
-
-
-
-# Fig S8 - Explanatory factors of PAS (alternative models) ----------
-
-dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
 
 ## Classification with AICc only ----------------------------------------
 
@@ -1077,7 +1032,7 @@ table(df_scl_aicc$shift_dec)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s8/fig_s8a_decaicc.pdf",
+pdf(file = "res/figs/supp/fig_s7/fig_s7a_decaicc.pdf",
     width=6, height=4)
 print(m_dec_aicc)
 dev.off()
@@ -1111,7 +1066,7 @@ table(df_scl_aicc$shift_inc)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s8/fig_s8b_incaicc.pdf",
+pdf(file = "res/figs/supp/fig_s7/fig_s7b_incaicc.pdf",
     width=6, height=4)
 print(m_inc_aicc)
 dev.off()
@@ -1178,7 +1133,7 @@ table(df_scl_Umsy$shift_dec)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s8/fig_s8c_decUmsy.pdf",
+pdf(file = "res/figs/supp/fig_s7/fig_s7c_decUmsy.pdf",
     width=6, height=4)
 print(m_dec_Umsy)
 dev.off()
@@ -1222,20 +1177,21 @@ table(df_scl_Umsy$shift_inc)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s8/fig_s8d_incUmsy.pdf",
+pdf(file = "res/figs/supp/fig_s7/fig_s7d_incUmsy.pdf",
     width=6, height=4)
 print(m_inc_Umsy)
 dev.off()
 
 
-# Fig S9 - PAS collapse AICc only -----------------------------------------
 
-dir.create("res/figs/supp/fig_s9", showWarnings=FALSE)
+# Fig S8 - PAS collapse AICc only -----------------------------------------
+
+dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
 
 # Collapse <25% average stock biomass
 bavg0.25_aicc <- shift_coll_plot(traj_SProd_aicc, coll_def=c("bavg", 0.25), csec_coll = 2)
 
-ggsave(filename="res/figs/supp/fig_s9/fig_s9_bavg0.25_cseccoll2.pdf",
+ggsave(filename="res/figs/supp/fig_s8/fig_s8_bavg0.25_cseccoll2.pdf",
        width=14, height=8, plot=bavg0.25_aicc)
 
 ### Statistical tests ----------------------------------------------------
@@ -1257,3 +1213,50 @@ coll_aicc <- add_collapsed(traj_SProd_aicc, coll_def=c("bavg", 0.25), csec_coll=
 coll_aicc %>% dplyr::filter(traj=="decrease abrupt" & did_collapse=="Yes") %>%
   dplyr::mutate(diff = loc_brk_chg-first_coll_y) %>%
   dplyr::arrange(diff)
+
+
+
+# Fig S9 - Abrupt shifts and alternative collapse definitions -------
+
+dir.create("res/figs/supp/fig_s9", showWarnings=FALSE)
+
+fig_s9 <- bmax0.1[[1]] / bavg0.15[[1]] / bavg0.5[[1]] +
+  patchwork::plot_annotation(tag_levels = "A")
+
+ggsave(filename="res/figs/supp/fig_s9/fig_s9_coll.pdf", width=14, height=12, plot=fig_s9)
+
+## Statistical tests ----------------------------------------------------
+
+# Collapse <10% maximum stock biomass
+coll_bmax0.1 <- add_collapsed(traj_SProd, coll_def=c("bmax", 0.1), csec_coll=2)
+(t_dec_bmax0.1 <-
+    t.test(coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
+                          coll_bmax0.1$did_collapse=="Yes",]$mag,
+           coll_bmax0.1[coll_bmax0.1$traj=="decrease abrupt" &
+                          coll_bmax0.1$did_collapse=="No",]$mag))
+# p-value = 0.0225
+
+# Collapse <15% average stock biomass
+coll_bavg0.15 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.15), csec_coll=2)
+(t_dec_bavg0.15 <-
+    t.test(coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
+                           coll_bavg0.15$did_collapse=="Yes",]$mag,
+           coll_bavg0.15[coll_bavg0.15$traj=="decrease abrupt" &
+                           coll_bavg0.15$did_collapse=="No",]$mag))
+# p-value = 0.062
+
+# Collapse <50% average stock biomass
+coll_bavg0.5 <- add_collapsed(traj_SProd, coll_def=c("bavg", 0.5), csec_coll=2)
+(t_dec_bavg0.5 <-
+    t.test(coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
+                          coll_bavg0.5$did_collapse=="Yes",]$mag,
+           coll_bavg0.5[coll_bavg0.5$traj=="decrease abrupt" &
+                          coll_bavg0.5$did_collapse=="No",]$mag))
+# p-value = 0.2347
+
+(t_inc_bavg0.5 <-
+    t.test(coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
+                          coll_bavg0.5$did_collapse=="Yes",]$mag,
+           coll_bavg0.5[coll_bavg0.5$traj=="increase abrupt" &
+                          coll_bavg0.5$did_collapse=="No",]$mag))
+# p-value = 0.8263
