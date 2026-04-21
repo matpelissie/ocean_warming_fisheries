@@ -24,5 +24,5 @@ library(sf) # version 1.0-15
 library(rfishbase) # version 4.1.2 (previous versions miss functions and values)
 # to install the right version:
 # remotes::install_version("rfishbase", version="4.1.2", repos="https://cran.r-project.org", force=TRUE)
-library(FishLife) # version 3.0.0 (pak::pak("james-thorson/FishLife"))
+library(FishLife) # version 3.0.0 (remotes::install_github("james-thorson/FishLife"))
 # Ignore the call to install earlier rfishbase version while loading FishLife
