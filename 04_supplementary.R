@@ -238,9 +238,108 @@ dev.off()
 
 
 
-# Fig S2 - Trajectories in space by LMEs (abr/not abr) --------------------------
+# Fig S2 - Iconic shifts in the data -----------------------------------
 
 dir.create("res/figs/supp/fig_s2", showWarnings=FALSE)
+
+st_examples <-
+  c("HERRSOG",
+    "COD2J3KL",
+    "CODBA2532",
+    "PILCHPJPN",
+    "SARDSAS",
+    "PANCHPERUNC"
+  )
+
+for (i in 1:length(st_examples)){
+
+  print(paste0("Classification in progress for ", st_examples[i]))
+
+  set <- extract_RAM(st_examples[i], "SProd") %>%
+    prep_data_simpl()
+
+  mean_TBbest <- extract_RAM(st_examples[i], "TBbest") %>%
+    dplyr::filter(year>=min(set$ts[[1]]$X) & year<=max(set$ts[[1]]$X)) %>%
+    dplyr::pull(TBbest) %>%
+    mean()
+
+  set$ts[[1]]$Y <- set$ts[[1]]$Y/mean_TBbest
+
+  if (i==6){set$ts$SProd_PANCHPERUNC <- set$ts$SProd_PANCHPERUNC[-52,]} # last LOO for display
+
+  trajs <- traj_class(sets=set, str="aic_asd", abr_mtd=c("chg", "asd"),
+                      run_loo=TRUE, two_bkps=TRUE,
+                      makeplots=TRUE, ind_plot="best",
+                      showlastplot=TRUE)
+
+  pdf(file=paste0("res/figs/supp/fig_s2/", st_examples[i], ".pdf"), width=3.5, height=2.5)
+  print(trajs$class_plot$plots[[1]] +
+          ylab("Normalized productivity")+
+          theme(plot.background = element_blank(),
+                axis.title.x = element_blank(),
+                axis.title.y = element_text(size=8),
+                panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank(),
+                plot.title = ggtext::element_markdown(size=8)))
+  dev.off()
+}
+
+# Map with stock boundaries
+land <- rnaturalearth::ne_countries(scale="medium", returnclass = "sf")
+coast <- rnaturalearth::ne_coastline(scale ="medium", returnclass = "sf")
+ocean <- sf::st_polygon(list(cbind(c(seq(-180, 179, len = 100), rep(180, 100),
+                                     seq(179, -180, len = 100), rep(-180, 100)),
+                                   c(rep(-90, 100), seq(-89, 89, len = 100),
+                                     rep(90, 100), seq(89, -90, len = 100))))) %>%
+  sf::st_sfc(crs = "WGS84") %>%
+  sf::st_as_sf()
+
+(map <- ggplot() +
+    geom_sf(data = ocean, fill = "gray90", colour=NA) +
+    geom_sf(data = land, fill = "white", colour = "white") +
+    # geom_sf(data = coast, colour = "grey50", linewidth=0.2) +
+    theme_void() +
+    theme(panel.border = element_rect(color = "gray50"),
+          panel.background = element_rect(fill = "white")))
+
+ggsave(filename="res/figs/supp/fig_s2/fig_s2_map.pdf",
+       width=16, height=10, plot=map)
+
+# stock polygons
+pol_info <- data.frame(
+  assessid = c("DFO-HERRSOG-1951-2015-WATSON",
+               "DFO-COD2J3KL-1959-2014-WATSON",
+               "WGBFAS-CODBA2532-1966-2012-CHING",
+               "FAFRFJ-PILCHPJPN-1975-2019-KUROTA",
+               "MARAM-SARDSAS-1984-2019-deMoor",
+               "IMARPE-PANCHPERUNC-1959-2008-HIVELY"),
+  path = c(rep("data/spatial_data/stock_boundaries/ramldb_boundaries", 3),
+           rep("data/spatial_data/stock_boundaries/additional_boundaries", 2),
+           "data/spatial_data/stock_boundaries/ramldb_boundaries"))
+
+polyg_list <- lapply(1:nrow(pol_info), function(i){
+  sf::read_sf(dsn=pol_info$path[i],
+              layer=pol_info$assessid[i])}) %>% dplyr::bind_rows()
+polyg_list[4,]$stockid <- "PILCHPJPN"
+
+(p_pol <- map +
+    geom_sf(data = polyg_list, aes(fill=stockid), colour=NA)+
+    geom_sf(data = coast, colour = "grey50", linewidth=0.1) +
+    coord_sf(ylim=c(-59, 87))+
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_fill_discrete(palette = scales::pal_brewer(palette = "Dark2")(6)))
+
+ggsave(filename="res/figs/supp/fig_s2/fig_s2_map_pol.pdf",
+       width=16, height=10, plot=p_pol)
+
+# => Panels assembled with Inkscape adding silhouettes and tags
+
+
+
+# Fig S3 - Trajectories in space by LMEs (abr/not abr) --------------------------
+
+dir.create("res/figs/supp/fig_s3", showWarnings=FALSE)
 
 sf::sf_use_s2(FALSE) # To remove error for intersection
 
@@ -309,16 +408,16 @@ space_lme <- ggplot(lmes)+
   ggimage::geom_subview(aes(x=x, y=y, subview=sunburst,
                             width=width, height=width), data=centroid_lme)
 
-pdf(file = "res/figs/supp/fig_s2/fig_s2_lmes.pdf",
+pdf(file = "res/figs/supp/fig_s3/fig_s3_lmes.pdf",
     width=12, height=9)
 print(space_lme)
 dev.off()
 
 
 
-# Fig S3 - Trajectory classification by taxonomic order -----------------------
+# Fig S4 - Trajectory classification by taxonomic order -----------------------
 
-dir.create("res/figs/supp/fig_s3", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s4", showWarnings=FALSE)
 
 # Number of stocks in RAMLDB:
 sp_RAM <- timeseries_values_views %>%
@@ -431,7 +530,7 @@ FAOcatch_fish <- fish_file %>%
           axis.text = element_text(size=20),
           axis.title = element_text(size=20)))
 
-pdf(file = paste0("res/figs/supp/fig_s3/fig_s3_taxord.pdf"),
+pdf(file = paste0("res/figs/supp/fig_s4/fig_s4_taxord.pdf"),
     width=12, height=8)
 print(p_ram_traj + p_fao_catch)
 dev.off()
@@ -475,9 +574,9 @@ chi_traj_ord$stdres %>%
 
 
 
-# Fig S4 - LME collapse proportions vs. warming (alternative definitions) ----
+# Fig S5 - LME collapse proportions vs. warming (alternative definitions) ----
 
-dir.create("res/figs/supp/fig_s4", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s5", showWarnings=FALSE)
 
 # Collapse <10% maximum stock biomass
 bmax0.1 <- shift_coll_plot(traj_SProd, coll_def=c("bmax", 0.1), csec_coll = 2)
@@ -488,16 +587,16 @@ bavg0.15 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.15), csec_coll = 2)
 # Collapse <50% average stock biomass
 bavg0.5 <- shift_coll_plot(traj_SProd, coll_def=c("bavg", 0.5), csec_coll = 2)
 
-fig_s4 <- bmax0.1[[2]][[3]] + bavg0.15[[2]][[3]] + bavg0.5[[2]][[3]] +
+coll_warm <- bmax0.1[[2]][[3]] + bavg0.15[[2]][[3]] + bavg0.5[[2]][[3]] +
   patchwork::plot_annotation(tag_levels = "A")
 
-ggsave("res/figs/supp/fig_s4/fig_s4_collsst.pdf", width=15, height=5, plot=fig_s4)
+ggsave("res/figs/supp/fig_s5/fig_s5_collsst.pdf", width=15, height=5, plot=coll_warm)
 
 
 
-# Fig S5 - Correlation matrices ----------------------------------------------
+# Fig S6 - Correlation matrices ----------------------------------------------
 
-dir.create("res/figs/supp/fig_s5", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s6", showWarnings=FALSE)
 
 col_fn <- function(data, mapping, method="p", use="pairwise", ...){
 
@@ -528,7 +627,7 @@ fishlife_multicorr <- GGally::ggpairs(
   lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
                combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
 
-pdf(file = "res/figs/supp/fig_s5/fig_s5a_fishlife.pdf",
+pdf(file = "res/figs/supp/fig_s6/fig_s6a_fishlife.pdf",
     width=8.75, height=8.75)
 print(fishlife_multicorr)
 dev.off()
@@ -559,7 +658,7 @@ traits_multicorr_all <- GGally::ggpairs(
   lower = list(continuous = GGally::wrap("points", alpha = 0.3, size=0.3),
                combo = GGally::wrap("dot", alpha = 0.4, size=0.3)))
 
-pdf(file = "res/figs/supp/fig_s5/fig_s5b_alltraits.pdf",
+pdf(file = "res/figs/supp/fig_s6/fig_s6b_alltraits.pdf",
     width=10, height=10)
 print(traits_multicorr_all)
 dev.off()
@@ -577,7 +676,7 @@ corrr::correlate(
 
 
 
-# Fig S6 - Trajectory overview classified on AICc only --------------------
+# Fig S7 - Trajectory overview classified on AICc only --------------------
 
 traj_SProd_aicc <-
   readRDS("res/classif/classif_v4.61_SProd_minlen25_normTBavg_looTRUE_aicasd_start1950_AICconly.rds") %>%
@@ -595,7 +694,7 @@ traj_SProd_aicc <-
                      dplyr::select(stockid, primary_FAOarea),
                    by="stockid")
 
-dir.create("res/figs/supp/fig_s6", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s7", showWarnings=FALSE)
 
 ### a - Overall ---------------------------------------------------------
 
@@ -625,7 +724,7 @@ SProd_sunburst <- sunburst_traj_plot_det(traj_SProd_sum_det, size=4,
   labs(tag="A")+
   theme(plot.tag=element_text(size=20, face = "bold"))
 
-pdf(file = "res/figs/supp/fig_s6/fig_s6a.pdf",
+pdf(file = "res/figs/supp/fig_s7/fig_s7a.pdf",
     width=8, height=6)
 print(SProd_sunburst)
 dev.off()
@@ -741,7 +840,7 @@ space <- ggplot(areas %>%
   theme(plot.tag=element_text(size=20, face = "bold"))+
   labs(tag="D")
 
-pdf(file = "res/figs/supp/fig_s6/fig_6b.pdf",
+pdf(file = "res/figs/supp/fig_s7/fig_7b.pdf",
     width=12, height=9)
 print(space)
 dev.off()
@@ -840,7 +939,7 @@ abr_events <- traj_SProd_aicc %>%
 abr_time <- abr_time_pos / abr_time_neg
 
 ggsave(plot = abr_time,
-       "res/figs/supp/fig_s6/fig_s6cd.pdf", width=5, height=5.625)
+       "res/figs/supp/fig_s7/fig_s7cd.pdf", width=5, height=5.625)
 
 
 ### Statistical tests ----------------------------------------------------
@@ -964,9 +1063,9 @@ chi_traj_ord$stdres %>%
 
 
 
-# Fig S7 - Explanatory factors of PAS (alternative models) ----------
+# Fig S8 - Explanatory factors of PAS (alternative models) ----------
 
-dir.create("res/figs/supp/fig_s7", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
 
 ## Classification with AICc only ----------------------------------------
 
@@ -1032,7 +1131,7 @@ table(df_scl_aicc$shift_dec)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s7/fig_s7a_decaicc.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8a_decaicc.pdf",
     width=6, height=4)
 print(m_dec_aicc)
 dev.off()
@@ -1066,7 +1165,7 @@ table(df_scl_aicc$shift_inc)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s7/fig_s7b_incaicc.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8b_incaicc.pdf",
     width=6, height=4)
 print(m_inc_aicc)
 dev.off()
@@ -1133,7 +1232,7 @@ table(df_scl_Umsy$shift_dec)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s7/fig_s7c_decUmsy.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8c_decUmsy.pdf",
     width=6, height=4)
 print(m_dec_Umsy)
 dev.off()
@@ -1177,21 +1276,21 @@ table(df_scl_Umsy$shift_inc)
   point_stroke = 0.5,
   x = "estimate"))
 
-pdf(file = "res/figs/supp/fig_s7/fig_s7d_incUmsy.pdf",
+pdf(file = "res/figs/supp/fig_s8/fig_s8d_incUmsy.pdf",
     width=6, height=4)
 print(m_inc_Umsy)
 dev.off()
 
 
 
-# Fig S8 - PAS collapse AICc only -----------------------------------------
+# Fig S9 - PAS collapse AICc only -----------------------------------------
 
-dir.create("res/figs/supp/fig_s8", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s9", showWarnings=FALSE)
 
 # Collapse <25% average stock biomass
 bavg0.25_aicc <- shift_coll_plot(traj_SProd_aicc, coll_def=c("bavg", 0.25), csec_coll = 2)
 
-ggsave(filename="res/figs/supp/fig_s8/fig_s8_bavg0.25_cseccoll2.pdf",
+ggsave(filename="res/figs/supp/fig_s9/fig_s9_bavg0.25_cseccoll2.pdf",
        width=14, height=8, plot=bavg0.25_aicc)
 
 ### Statistical tests ----------------------------------------------------
@@ -1216,14 +1315,14 @@ coll_aicc %>% dplyr::filter(traj=="decrease abrupt" & did_collapse=="Yes") %>%
 
 
 
-# Fig S9 - Abrupt shifts and alternative collapse definitions -------
+# Fig S10 - Abrupt shifts and alternative collapse definitions -------
 
-dir.create("res/figs/supp/fig_s9", showWarnings=FALSE)
+dir.create("res/figs/supp/fig_s10", showWarnings=FALSE)
 
-fig_s9 <- bmax0.1[[1]] / bavg0.15[[1]] / bavg0.5[[1]] +
+fig_s10 <- bmax0.1[[1]] / bavg0.15[[1]] / bavg0.5[[1]] +
   patchwork::plot_annotation(tag_levels = "A")
 
-ggsave(filename="res/figs/supp/fig_s9/fig_s9_coll.pdf", width=14, height=12, plot=fig_s9)
+ggsave(filename="res/figs/supp/fig_s10/fig_s10_coll.pdf", width=14, height=12, plot=fig_s10)
 
 ## Statistical tests ----------------------------------------------------
 
