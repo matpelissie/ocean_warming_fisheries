@@ -583,7 +583,9 @@ modgam_dec <- mgcv::gamm(
     DemersPelag +
     sst_avg_prshf + sst_change_prshf +
     mean_ER_prshf + ER_change_prshf +
-    s(X, Y) + s(length, bs="re") +
+    sst_avg_prshf:mean_ER_prshf +
+    sst_change_prshf:ER_change_prshf +
+    s(X, Y, bs="tp") + s(length, bs="re") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
@@ -604,7 +606,7 @@ table(df_scl$shift_dec)
   x = "estimate"))
 
 pdf(file = "res/figs/fig3/fig3a_dec.pdf",
-    width=6, height=4)
+    width=7, height=4.5)
 print(m_dec)
 dev.off()
 
@@ -617,7 +619,9 @@ modgam_inc <- mgcv::gamm(
     DemersPelag+
     sst_avg_prshf + sst_change_prshf +
     mean_ER_prshf + ER_change_prshf +
-    s(X, Y) + s(length, bs="re") +
+    sst_avg_prshf:mean_ER_prshf +
+    sst_change_prshf:ER_change_prshf +
+    s(X, Y, bs="tp") + s(length, bs="re") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
@@ -638,7 +642,7 @@ table(df_scl$shift_inc)
   x = "estimate"))
 
 pdf(file = "res/figs/fig3/fig3b_inc.pdf",
-    width=6, height=4)
+    width=7, height=4.5)
 print(m_inc)
 dev.off()
 
