@@ -38,11 +38,11 @@ unlink("data/raw_data/Capture_2024.1.0.zip")
 
 # Taxonomy
 download.file(
-  "https://www.fao.org/fishery/static/ASFIS/ASFIS_sp.zip",
-  destfile = "data/raw_data/ASFIS_sp.zip")
-unzip("data/raw_data/ASFIS_sp.zip",
-      exdir = "data/FAO_data/ASFIS_sp")
-unlink("data/raw_data/ASFIS_sp.zip")
+  "https://www.fao.org/fishery/static/ASFIS/ASFIS_sp_2023.zip",
+  destfile = "data/raw_data/ASFIS_sp_2023.zip")
+unzip("data/raw_data/ASFIS_sp_2023.zip",
+      exdir = "data/FAO_data/ASFIS_sp_2023")
+unlink("data/raw_data/ASFIS_sp_2023.zip")
 
 
 
