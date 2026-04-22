@@ -332,6 +332,129 @@ abr_time <- abr_time_pos / abr_time_neg
 ggsave(plot = abr_time,
        "res/figs/fig2/fig2cd.pdf", width=5, height=5.625)
 
+
+### 2e - Trajectory classification by taxonomic order -----------------------
+
+dir.create("res/figs/supp/fig_s4", showWarnings=FALSE)
+
+# Number of stocks in RAMLDB:
+sp_RAM <- timeseries_values_views %>%
+  dplyr::filter(!is.na(TBbest)) %>%
+  dplyr::group_by(stockid) %>%
+  dplyr::slice(1) %>%
+  dplyr::left_join(as.data.frame(stock) %>%
+                     dplyr::select(stockid, scientificname), by="stockid") %>%
+  dplyr::left_join(taxonomy %>%
+                     dplyr::group_by(scientificname) %>%
+                     dplyr::slice(1), by="scientificname") %>%
+  # Excluding non-fish and Salmonids
+  dplyr::filter(phylum == "Chordata" & ordername != "Salmoniformes") %>%
+  dplyr::group_by(ordername) %>%
+  dplyr::summarise(ram_stk=n())
+
+traj_RAM <- traj_SProd %>%
+  dplyr::mutate(traj_simpl = dplyr::case_when(
+    traj %in% c("stable_constant", "stable_convex", "stable_concave") ~ "stable",
+    traj %in% c("increase_constant", "increase_decelerated", "increase_accelerated") ~ "increase gradual",
+    traj == "1_breakpoint" & trend=="increase" ~ "positive PAS",
+    traj %in% c("decrease_constant", "decrease_decelerated") ~ "decrease gradual",
+    traj == "1_breakpoint" & trend=="decrease" ~ "negative PAS"),
+    traj_simpl = factor(traj_simpl,
+                        levels=c("stable", "increase gradual", "positive PAS",
+                                 "decrease gradual", "negative PAS"))) %>%
+  dplyr::group_by(traj_simpl, ordername) %>%
+  dplyr::summarise(stk_traj=n()) %>%
+  dplyr::group_by(ordername) %>%
+  dplyr::mutate(n_tot = sum(stk_traj)) %>%
+  dplyr::right_join(sp_RAM, by="ordername")
+
+(p_ram_traj <- ggplot(traj_RAM)+
+    geom_col(aes(x=reorder(ordername, ram_stk), y=ram_stk), fill="grey",
+             position="identity", width=0.7)+
+    geom_col(aes(x=reorder(ordername, ram_stk), y=stk_traj, fill=traj_simpl),
+             position="stack", width=0.7)+
+    scale_fill_manual(
+      values =
+        c("stable"="#E8DE9C",
+          "decrease gradual"="#F08080", "negative PAS"="#660000",
+          "increase gradual"="#99CCFF", "positive PAS"="#000066"))+
+    labs(y="Number of stocks", fill="trajectory")+
+    labs(x="")+
+    theme_bw()+
+    coord_flip()+
+    guides(fill=guide_legend(nrow=2, byrow=TRUE))+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    theme(panel.grid.major.y = element_blank(),
+          axis.text=element_text(size=15),
+          axis.title = element_text(size=15),
+          legend.position="bottom"))
+
+
+# FAO catch 1950-2022
+fish_file <- readr::read_csv("data/FAO_data/Capture_2024.1.0/Capture_Quantity.csv")
+species <- readr::read_csv("data/FAO_data/Capture_2024.1.0/CL_FI_SPECIES_GROUPS.csv")
+area <- readr::read_csv("data/FAO_data/Capture_2024.1.0/CL_FI_WATERAREA_GROUPS.csv")
+taxo <- readr::read_delim("data/FAO_data/ASFIS_sp_2023/ASFIS_sp_2023.txt")
+
+FAOcatch_fish <- fish_file %>%
+  dplyr::left_join(species %>%
+                     dplyr::select(`3A_Code`, Scientific_Name,
+                                   ISSCAAP_Group_En, Major_Group),
+                   by=c("SPECIES.ALPHA_3_CODE"="3A_Code")) %>%
+  dplyr::left_join(area %>%
+                     dplyr::select(Code, Name_En) %>%
+                     dplyr::rename(area=Name_En),
+                   by=c("AREA.CODE"="Code")) %>%
+  dplyr::filter(!grepl("Inland", area) & Major_Group=="PISCES") %>%
+  dplyr::group_by(ISSCAAP_Group_En, Scientific_Name, SPECIES.ALPHA_3_CODE) %>%
+  dplyr::summarise(catch = sum(VALUE), .groups = "keep") %>%
+  dplyr::arrange(dplyr::desc(catch)) %>%
+  dplyr::left_join(taxo %>%
+                     dplyr::mutate(Order =
+                                     ifelse(Family %in%
+                                              c("OSMERIDAE", "PLECOGLOSSIDAE",
+                                                "RETROPINNIDAE", "SALANGIDAE"),
+                                            "Osmeriformes", Order)) %>%
+                     dplyr::select(Alpha3_Code, Order),
+                   by=c("SPECIES.ALPHA_3_CODE" = "Alpha3_Code")) %>%
+  dplyr::mutate(Order = stringr::str_to_title(Order),
+                Order = dplyr::recode(Order,
+                                      Scombroidei = "Perciformes",
+                                      Percoidei = "Perciformes",
+                                      Gobioidei = "Perciformes",
+                                      Zoarcoidei = "Perciformes",
+                                      "Stromateoidei, Anabantoidei" = "Perciformes",
+                                      "Other Perciformes" = "Perciformes",
+                                      Trachinoidei = "Trachiniformes",
+                                      Acanthuroidei = "Acanthuriformes",
+                                      .default = Order)) %>%
+  dplyr::filter(Order != "Pisces Miscellanea") %>%
+  dplyr::group_by(Order) %>%
+  dplyr::summarise(totcatch = sum(catch)) %>%
+  dplyr::rename(ordername = Order) %>%
+  dplyr::filter(ordername %in% sp_RAM$ordername) %>%
+  arrange(totcatch) %>%
+  dplyr::right_join(sp_RAM, by="ordername")
+
+(p_fao_catch <- ggplot(FAOcatch_fish)+
+    geom_col(aes(x=reorder(ordername, ram_stk), y=totcatch/1000000),
+             fill="grey40", position="identity", width=0.7)+
+    labs(y="Total catch 1950-2022 (million tons)")+
+    labs(x="")+
+    theme_bw()+
+    coord_flip()+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.05)))+
+    theme(panel.grid.major.y = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text = element_text(size=15),
+          axis.title = element_text(size=15)))
+
+pdf(file = paste0("res/figs/supp/fig_2e/fig_2e_taxord.pdf"),
+    width=12, height=5)
+print(p_ram_traj + p_fao_catch)
+dev.off()
+
 # => Panels assembled with Inkscape to arrange the legends
 
 
@@ -376,35 +499,41 @@ set.seed(1)
 #       function(i) chisq.test(x=i, p=c(0.25,0.25,0.25,0.25),
 #                              simulate.p.value=TRUE, B=1e5)$p.value)
 
-# By trajectory (abrupt decrease, abrupt increase, nonabrupt)
-traj_SProd_sum_fao <- traj_SProd %>%
+
+# Taxonomic order by trajectory (abrupt decrease, abrupt increase, nonabrupt)
+traj_SProd_sum_ord <- traj_SProd_aicc %>%
   dplyr::mutate(traj = dplyr::case_when(
-    class=="abrupt" & trend=="decrease" ~"decrease_abrupt",
-    class=="abrupt" & trend=="increase" ~"increase_abrupt",
-    class!="abrupt" ~"nonabrupt")) %>%
-  dplyr::group_by(traj, primary_FAOarea) %>%
+    traj == "1_breakpoint" & trend=="increase" ~ "positive PAS",
+    traj == "1_breakpoint" & trend=="decrease" ~ "negative PAS",
+    .default = "non abrupt")) %>%
+  dplyr::group_by(traj, ordername) %>%
   dplyr::summarise(n=n()) %>%
   dplyr::ungroup()
 
-traj_mat_fao <- traj_SProd_sum_fao %>%
+# Keep only the five more numerous orders in number of stocks included
+traj_SProd_sum_ord <- traj_SProd_sum_ord %>%
+  dplyr::filter(ordername %in%
+                  c("Perciformes", "Gadiformes", "Scorpaeniformes",
+                    "Pleuronectiformes", "Clupeiformes"))
+
+traj_mat_ord <- traj_SProd_sum_ord %>%
   tidyr::pivot_wider(names_from=traj, values_from=n) %>%
-  tibble::column_to_rownames("primary_FAOarea") %>%
+  tibble::column_to_rownames("ordername") %>%
   dplyr::mutate(dplyr::across(everything(), ~ ifelse(is.na(.x), 0, .))) %>%
   as.matrix()
 
-mosaicplot(traj_mat_fao, main="class by FAO area", color = TRUE)
+mosaicplot(traj_mat_ord, main="class by taxonomic order", color = TRUE)
 
 set.seed(1)
-(chi_traj_fao <- chisq.test(traj_mat_fao, simulate.p.value=TRUE, B=1e5))
-# p-value = 0.01647
+(chi_traj_ord <- chisq.test(traj_mat_ord, simulate.p.value=TRUE, B=1e5))
+# p-value = 1e-05
 
-chi_traj_fao$stdres %>%
+chi_traj_ord$stdres %>%
   as.data.frame() %>%
-  tibble::rownames_to_column(var="FAOarea") %>%
-  tidyr::pivot_longer(cols = contains("abrupt"), names_to = "traj", values_to="stdres") %>%
+  tibble::rownames_to_column(var="taxclass") %>%
+  tidyr::pivot_longer(cols = -taxclass, names_to = "traj", values_to="stdres") %>%
   dplyr::arrange(desc(abs(stdres)))
 
-# fisher.test(traj_mat_fao, simulate.p.value=TRUE, B=1e5)
 
 
 ## Fig 3 - Explanatory factors of PAS ----------------------------
