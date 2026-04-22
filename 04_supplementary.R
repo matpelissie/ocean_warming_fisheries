@@ -1074,7 +1074,9 @@ modgam_dec_aicc <- mgcv::gamm(
     DemersPelag +
     sst_avg_prshf + sst_change_prshf +
     mean_ER_prshf + ER_change_prshf +
-    s(X, Y) + s(length, bs="re") +
+    sst_avg_prshf:mean_ER_prshf +
+    sst_change_prshf:ER_change_prshf +
+    s(X, Y, bs="ts") + s(length, bs="re") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
@@ -1095,7 +1097,7 @@ table(df_scl_aicc$shift_dec)
   x = "estimate"))
 
 pdf(file = "res/figs/supp/fig_s7/fig_s7a_decaicc.pdf",
-    width=6, height=4)
+    width=7, height=4.5)
 print(m_dec_aicc)
 dev.off()
 
@@ -1108,7 +1110,9 @@ modgam_inc_aicc <- mgcv::gamm(
     DemersPelag+
     sst_avg_prshf + sst_change_prshf +
     mean_ER_prshf + ER_change_prshf +
-    s(X, Y) + s(length, bs="re") +
+    sst_avg_prshf:mean_ER_prshf +
+    sst_change_prshf:ER_change_prshf +
+    s(X, Y, bs="ts") + s(length, bs="re") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
@@ -1129,7 +1133,7 @@ table(df_scl_aicc$shift_inc)
   x = "estimate"))
 
 pdf(file = "res/figs/supp/fig_s7/fig_s7b_incaicc.pdf",
-    width=6, height=4)
+    width=7, height=4.5)
 print(m_inc_aicc)
 dev.off()
 
@@ -1175,7 +1179,9 @@ modgam_dec_Umsy <- mgcv::gamm(
     DemersPelag +
     sst_avg_prshf + sst_change_prshf +
     mean_U_prshf + U_change_prshf +
-    s(X, Y) + s(length, bs="re") +
+    sst_avg_prshf:mean_U_prshf +
+    sst_change_prshf:U_change_prshf +
+    s(X, Y, bs="ts") + s(length, bs="re") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
@@ -1196,7 +1202,7 @@ table(df_scl_Umsy$shift_dec)
   x = "estimate"))
 
 pdf(file = "res/figs/supp/fig_s7/fig_s7c_decUmsy.pdf",
-    width=6, height=4)
+    width=7, height=4.5)
 print(m_dec_Umsy)
 dev.off()
 
@@ -1219,7 +1225,9 @@ modgam_inc_Umsy <- mgcv::gamm(
     DemersPelag +
     sst_avg_prshf + sst_change_prshf +
     mean_U_prshf + U_change_prshf +
-    s(X, Y) + s(length, bs="re") +
+    sst_avg_prshf:mean_U_prshf +
+    sst_change_prshf:U_change_prshf +
+    s(X, Y, bs="ts") + s(length, bs="re") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
@@ -1240,7 +1248,7 @@ table(df_scl_Umsy$shift_inc)
   x = "estimate"))
 
 pdf(file = "res/figs/supp/fig_s7/fig_s7d_incUmsy.pdf",
-    width=6, height=4)
+    width=7, height=4.5)
 print(m_inc_Umsy)
 dev.off()
 
