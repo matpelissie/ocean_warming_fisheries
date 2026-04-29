@@ -139,8 +139,9 @@ rand_inc <- hier.part::rand.hp(df$shift_inc, as.data.frame(env),
 
 print("Randomizations for hierarchical partioning (abrupt increases) done.")
 
-hier.part_inc <- dplyr::bind_cols(part_dec$IJ, rand_dec) %>%
+hier.part_inc <- dplyr::bind_cols(part_inc$IJ, rand_dec) %>%
   tibble::rownames_to_column(var="variable")
+
 readr::write_csv(hier.part_inc, "res/figs/supp/tab_s3_hier.partinc.csv")
 
 
