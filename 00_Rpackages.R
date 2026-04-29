@@ -25,5 +25,5 @@ library(lwgeom) # version 0.2-15
 library(rfishbase) # version 4.1.2 (previous versions miss functions and values)
 # to install the right version:
 # remotes::install_version("rfishbase", version="4.1.2", repos="https://cran.r-project.org", force=TRUE)
-library(FishLife) # version 3.0.0 (remotes::install_github("james-thorson/FishLife"))
+library(FishLife) # version 3.1.0 (remotes::install_github("James-Thorson-NOAA/FishLife"))
 # Ignore the call to install earlier rfishbase version while loading FishLife
