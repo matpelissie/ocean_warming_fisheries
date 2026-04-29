@@ -8,6 +8,7 @@
 
 library(tidyverse)
 dir.create("data/raw_data/", showWarnings = FALSE)
+options(timeout = 120) # To allow downloading large datasets
 
 # Fisheries data -------
 
@@ -16,6 +17,7 @@ dir.create("data/raw_data/", showWarnings = FALSE)
 download.file(
   "https://zenodo.org/records/7814638/files/RAMLDB%20v4.61.zip?download=1",
   destfile = "data/raw_data/RAMLDB v4.61.zip")
+# If it issues an error try increase timeout in global options
 unzip("data/raw_data/RAMLDB v4.61.zip",
       exdir = "data/raw_data/RAMLDB v4.61")
 unlink("data/raw_data/RAMLDB v4.61.zip")
@@ -112,8 +114,6 @@ lme_all <- lmes %>%
   dplyr::mutate(area_lme = sf::st_area(.)) %>%
   sf::st_make_valid()
 
-# sf::write_sf(lme_all, dsn = "data/spatial_data/LME_highseas.shp")
-
 
 ### Compute LMEs centroids (and adjust some) ---------------------------
 
@@ -161,6 +161,7 @@ lme_cntrd %>%
 download.file(
   "https://chrismfree.com/files/ramldb_boundaries.zip",
   destfile = "data/raw_data/ramldb_boundaries.zip")
+# If it issues an error try increase timeout in global options
 unzip("data/raw_data/ramldb_boundaries.zip",
       exdir = "data/raw_data/ramldb_boundaries")
 unlink("data/raw_data/ramldb_boundaries.zip")
@@ -473,3 +474,4 @@ readr::write_csv(atemp.lme,
 
 # Remove unused raw data left
 unlink("data/raw_data/", recursive = TRUE)
+options(timeout = 60) # set back to default
