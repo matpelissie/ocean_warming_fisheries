@@ -22,6 +22,8 @@ library(scales) # verion 1.3.0
 library(ncdf4) # version 1.22
 library(sf) # version 1.0-15
 library(lwgeom) # version 0.2-15
+library(hier.part) # version 1.0-7
+# devtools::install_github("cjbwalsh/hier.part")
 library(rfishbase) # version 4.1.2 (previous versions miss functions and values)
 # to install the right version:
 # remotes::install_version("rfishbase", version="4.1.2", repos="https://cran.r-project.org", force=TRUE)
