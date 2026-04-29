@@ -94,7 +94,8 @@ classif_SProd <-
     group="stockid", time="year", variable=c("SProd"),
     str="aic_asd", run_loo=run_loo, two_bkps=TRUE,
     makeplots=TRUE, ind_plot=NULL,
-    dirname=dir1, save_plot=TRUE)
+    dirname=dir1, save_plot=TRUE,
+    cores=10) # Number of cores to adjust to your machine
 
 path1 <- paste0("classif_v4.61_SProd_minlen", len ,
                 "_normTBavg_loo", run_loo,"_aicasd_start", start_year)
@@ -122,7 +123,8 @@ classif_SProd <-
     group="stockid", time="year", variable=c("SProd"),
     str="aic", run_loo=run_loo, two_bkps=TRUE,
     makeplots=TRUE, ind_plot=NULL,
-    dirname=dir2, save_plot=TRUE)
+    dirname=dir2, save_plot=TRUE,
+    cores=10) # Number of cores to adjust to your machine
 
 path2 <- paste0("classif_v4.61_SProd_minlen", len ,
                 "_normTBavg_loo", run_loo,"_aicasd_start", start_year,"_AICconly")

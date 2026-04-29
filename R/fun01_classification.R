@@ -1965,7 +1965,8 @@ traj_class <- function(sets, run_loo, two_bkps, ...){
 run_classif_data <- function(df_list, min_len=20, group, time, variable,
                              str, run_loo, two_bkps,
                              makeplots=FALSE, ind_plot=NULL,
-                             dirname=NULL, save_plot=TRUE, ...){
+                             dirname=NULL, save_plot=TRUE,
+                             cores = 10, ...){
   # Load arguments:
   l <- list(...)
 
@@ -1973,39 +1974,45 @@ run_classif_data <- function(df_list, min_len=20, group, time, variable,
   df_list <- df_list[df_list %>% lapply(nrow)>=min_len]
 
   # Classify for all timeseries of this type:
-  traj_ts <- data.frame()
-  outlist <- list()
+  outlist <- pbapply::pblapply(
+    1:length(df_list),
+    function(i){
 
-  for (i in 1:length(df_list)){ # by group or population
+      set <- df_list[[i]] %>%
+        dplyr::rename(scen = stockid) %>%
+        dplyr::select(scen, year, SProd) %>%
+        tidyr::drop_na() %>%
+        prep_data_simpl()
 
-    set <- df_list[[i]] %>%
-      dplyr::rename(scen = dplyr::all_of(group)) %>%
-      dplyr::select(scen, dplyr::all_of(time), all_of(variable)) %>%
-      tidyr::drop_na() %>%
-      prep_data_simpl()
+      if(str == "aic") abr_mtd <- c("chg")
+      if(str == "aic_asd") abr_mtd <- c("chg", "asd")
 
-    set_length <- nrow(set$ts[[1]])
+      trajs <- traj_class(sets=set, str=str, abr_mtd=abr_mtd,
+                          run_loo=run_loo, two_bkps=two_bkps,
+                          makeplots=makeplots, ind_plot=ind_plot,
+                          dirname=dirname, save_plot=save_plot)
 
-    if(str == "aic") abr_mtd <- c("chg")
-    if(str == "aic_asd") abr_mtd <- c("chg", "asd")
+      return(trajs)
 
-    trajs <- traj_class(sets=set, str=str, abr_mtd=abr_mtd,
-                        run_loo=run_loo, two_bkps=two_bkps,
-                        makeplots=makeplots, ind_plot=ind_plot,
-                        dirname=dirname, save_plot=save_plot, ...)
+    },
+    # str=str, abr_mtd=abr_mtd,
+    # run_loo=run_loo, two_bkps=two_bkps,
+    # makeplots=makeplots, ind_plot=ind_plot,
+    # dirname=dirname, save_plot=save_plot,
+    # showlastplot=FALSE,
+    cl = cores)
 
-    traj_ts <- traj_ts %>% dplyr::bind_rows(trajs$best_traj)
-    outlist[[names(df_list)[i]]] <- trajs
+  names(outlist) <- names(df_list)
 
-    if (i%%10 == 0) print(paste0(i,"/",length(df_list)))
-  }
-
-  traj_ts_full <- traj_ts %>%
+  traj_ts_full <- lapply(
+    names(list_SProd_norm),
+    function(i){outlist[[i]]$best_traj}) %>%
+    dplyr::bind_rows() %>%
     dplyr::mutate(species = simu_id %>%
                     sub("_iter01","", .))
 
   return(list("traj_ts_full"=traj_ts_full, "outlist"=outlist,
-              "param_list"=trajs$param_list))
+              "param_list"=outlist[[1]]$param_list))
 
 }
 
