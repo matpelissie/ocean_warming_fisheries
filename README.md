@@ -17,7 +17,7 @@ The 'R' directory contains the functions used for performing the analyses and th
 
 ## Run time series classification
 
-`02_classification.R` defines the fish stocks suitable for the trajectory classification, computes surplus production, and performs the classification for each time series. This step may take about one hour to be completed.
+`02_classification.R` defines the fish stocks suitable for the trajectory classification, computes surplus production, and performs the classification for each time series.
 
 ## Perform the analyses and make the figures
 
