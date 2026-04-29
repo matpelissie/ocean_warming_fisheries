@@ -81,6 +81,7 @@ list_SProd_norm <-
                          len,"_start",start_year,".rds"))
 
 # Create directory to store classification output:
+dir.create("res/", showWarnings=FALSE)
 dir.create("res/classif/", showWarnings=FALSE)
 dir1 <- paste0("res/classif/SProd_RAMLDBv4.61_minlen",
                len,"_start",start_year,"/")
