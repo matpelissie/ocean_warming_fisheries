@@ -104,11 +104,13 @@ env <- df %>% dplyr::select(tm, Lm,
                             ER_change_prshf, X, Y)
 
 # hier.part for abrupt declines:
-part_dec <- hier.part::hier.part(df$shift_dec, env, fam = "binomial",
+part_dec <- hier.part::hier.part(df$shift_dec, as.data.frame(env),
+                                 fam = "binomial",
                                  link="logit", gof = "logLik")
 # randomization test (LONG STEP):
 set.seed(1)
-rand_dec <- hier.part::rand.hp(df$shift_dec, env, fam = "binomial",
+rand_dec <- hier.part::rand.hp(df$shift_dec, as.data.frame(env),
+                               fam = "binomial",
                                link="logit", gof = "logLik",
                                num.reps = 999)$Iprobs
 
@@ -124,12 +126,14 @@ readr::write_csv(hier.part_dec, "res/figs/supp/tab_s2_hier.partdec.csv")
 # Table S3 - Hier.part increasing ----------------------------------------------
 
 # hier.part for abrupt increases:
-part_inc <- hier.part::hier.part(df$shift_inc, env, fam = "binomial",
+part_inc <- hier.part::hier.part(df$shift_inc, as.data.frame(env),
+                                 fam = "binomial",
                                  link="logit", gof = "logLik")
 
 # randomization test (LONG STEP):
 set.seed(1)
-rand_inc <- hier.part::rand.hp(df$shift_inc, env, fam = "binomial",
+rand_inc <- hier.part::rand.hp(df$shift_inc, as.data.frame(env),
+                               fam = "binomial",
                                link="logit", gof = "logLik",
                                num.reps = 999)$Iprobs
 
