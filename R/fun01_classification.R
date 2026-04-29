@@ -1953,7 +1953,6 @@ traj_class <- function(sets, run_loo, two_bkps, ...){
 #' @param dirname Directory name where to save plots.
 #' @param save_plot Logical, if plots are made, whether to save plots
 #' (either the four trajectory fits or one of a given fit).
-#' @param ... Additional arguments to be passed.
 #'
 #' @return List of three objects:
 #' - Data frame with classification output with one row for each timeseries
@@ -1966,35 +1965,35 @@ run_classif_data <- function(df_list, min_len=20, group, time, variable,
                              str, run_loo, two_bkps,
                              makeplots=FALSE, ind_plot=NULL,
                              dirname=NULL, save_plot=TRUE,
-                             cores = 10, ...){
-  # Load arguments:
-  l <- list(...)
+                             cores = 10){
 
   # List of timeseries meeting the length criterion:
   df_list <- df_list[df_list %>% lapply(nrow)>=min_len]
 
+  if(str == "aic") abr_mtd <- c("chg")
+  if(str == "aic_asd") abr_mtd <- c("chg", "asd")
+
+  run_classif <- function(i){
+
+    set <- df_list[[i]] %>%
+      dplyr::rename(scen = stockid) %>%
+      dplyr::select(scen, year, SProd) %>%
+      tidyr::drop_na() %>%
+      prep_data_simpl()
+
+    trajs <- traj_class(sets=set, str=str, abr_mtd=abr_mtd,
+                        run_loo=run_loo, two_bkps=two_bkps,
+                        makeplots=makeplots, ind_plot=ind_plot,
+                        dirname=dirname, save_plot=save_plot)
+
+    return(trajs)
+
+  }
+
   # Classify for all timeseries of this type:
   outlist <- pbapply::pblapply(
     1:length(df_list),
-    function(i){
-
-      set <- df_list[[i]] %>%
-        dplyr::rename(scen = stockid) %>%
-        dplyr::select(scen, year, SProd) %>%
-        tidyr::drop_na() %>%
-        prep_data_simpl()
-
-      if(str == "aic") abr_mtd <- c("chg")
-      if(str == "aic_asd") abr_mtd <- c("chg", "asd")
-
-      trajs <- traj_class(sets=set, str=str, abr_mtd=abr_mtd,
-                          run_loo=run_loo, two_bkps=two_bkps,
-                          makeplots=makeplots, ind_plot=ind_plot,
-                          dirname=dirname, save_plot=save_plot)
-
-      return(trajs)
-
-    },
+    run_classif,
     # str=str, abr_mtd=abr_mtd,
     # run_loo=run_loo, two_bkps=two_bkps,
     # makeplots=makeplots, ind_plot=ind_plot,
