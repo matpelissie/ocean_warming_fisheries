@@ -8,7 +8,7 @@
 
 library(tidyverse)
 dir.create("data/raw_data/", showWarnings = FALSE)
-options(timeout = 120) # To allow downloading large datasets
+options(timeout = 200) # To allow downloading large datasets
 
 # Fisheries data -------
 
