@@ -1976,8 +1976,8 @@ run_classif_data <- function(df_list, min_len=20, group, time, variable,
   run_classif <- function(i){
 
     set <- df_list[[i]] %>%
-      dplyr::rename(scen = stockid) %>%
-      dplyr::select(scen, year, SProd) %>%
+      dplyr::rename(scen = dplyr::all_of(group)) %>%
+      dplyr::select(scen, dplyr::all_of(time), all_of(variable)) %>%
       tidyr::drop_na() %>%
       prep_data_simpl()
 
@@ -2004,7 +2004,7 @@ run_classif_data <- function(df_list, min_len=20, group, time, variable,
   names(outlist) <- names(df_list)
 
   traj_ts_full <- lapply(
-    names(list_SProd_norm),
+    names(df_list),
     function(i){outlist[[i]]$best_traj}) %>%
     dplyr::bind_rows() %>%
     dplyr::mutate(species = simu_id %>%
