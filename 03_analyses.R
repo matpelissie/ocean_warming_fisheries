@@ -577,29 +577,30 @@ df_scl <- mod_df01_default %>%
                 ordername = as.factor(ordername))
 
 # Run GAMM
-modgam_dec <- mgcv::gamm(
+modgam_dec <- mgcv::gam(
   formula=shift_dec ~ tm + Lm +
     DemersPelag +
     sst_avg_prshf + sst_change_prshf +
     mean_ER_prshf + ER_change_prshf +
     sst_avg_prshf:mean_ER_prshf +
     sst_change_prshf:ER_change_prshf +
-    s(X, Y, bs="tp") + s(length, bs="re") +
+    s(X, Y, bs="tp") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
   data=df_scl)
 
-summary(modgam_dec$gam)
+summary(modgam_dec)
 table(df_scl$shift_dec)
 
 # Plot model estimates
 (m_dec <- ggstats::ggcoef_model(
-  modgam_dec$gam,
+  modgam_dec,
   colour = NULL, stripped_rows = FALSE,
   conf.level = 0.95,
   significance = 0.05,
   add_reference_rows=TRUE,
+  exponentiate = TRUE,
   point_size = 3,
   point_stroke = 0.5,
   x = "estimate"))
@@ -613,29 +614,30 @@ dev.off()
 ### 3b - Abrupt increases -----
 
 # Run GAMM
-modgam_inc <- mgcv::gamm(
+modgam_inc <- mgcv::gam(
   formula=shift_inc ~ tm + Lm +
     DemersPelag+
     sst_avg_prshf + sst_change_prshf +
     mean_ER_prshf + ER_change_prshf +
     sst_avg_prshf:mean_ER_prshf +
     sst_change_prshf:ER_change_prshf +
-    s(X, Y, bs="tp") + s(length, bs="re") +
+    s(X, Y, bs="tp") +
     s(ordername, bs="re") + s(family, bs="re"),
   family=binomial(link='logit'),
   na.action=na.omit,
   data=df_scl)
 
-summary(modgam_inc$gam)
+summary(modgam_inc)
 table(df_scl$shift_inc)
 
 # Plot model estimates
 (m_inc <- ggstats::ggcoef_model(
-  modgam_inc$gam,
+  modgam_inc,
   colour = NULL, stripped_rows = FALSE,
   conf.level = 0.95,
   significance = 0.05,
   add_reference_rows=TRUE,
+  exponentiate = TRUE,
   point_size = 3,
   point_stroke = 0.5,
   x = "estimate"))
