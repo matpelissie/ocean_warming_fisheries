@@ -600,7 +600,6 @@ table(df_scl$shift_dec)
   conf.level = 0.95,
   significance = 0.05,
   add_reference_rows=TRUE,
-  exponentiate = TRUE,
   point_size = 3,
   point_stroke = 0.5,
   x = "estimate"))
@@ -637,7 +636,6 @@ table(df_scl$shift_inc)
   conf.level = 0.95,
   significance = 0.05,
   add_reference_rows=TRUE,
-  exponentiate = TRUE,
   point_size = 3,
   point_stroke = 0.5,
   x = "estimate"))
