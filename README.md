@@ -1,6 +1,6 @@
-# Ocean warming may lead to abrupt declines in fish productivity at global scale 
+# Abrupt declines in fish productivity are associated with ocean warming at global scale
 
-This repository contains the minimal data and R scripts to reproduce the analyses and figures associated with the manuscript entitled "Ocean warming may lead to abrupt declines in fish productivity at global scale".
+This repository contains the minimal data and R scripts to reproduce the analyses and figures associated with the manuscript entitled "Abrupt declines in fish productivity are associated with ocean warming at global scale".
 
 ## R
 
